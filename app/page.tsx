@@ -454,16 +454,21 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Sedan option */}
             <div className="bg-white rounded-3xl overflow-hidden shadow-md border border-slate-100 hover:shadow-xl transition-shadow">
-              <div className="h-48 bg-slate-200 relative flex items-center justify-center text-slate-400">
-                <Car className="w-16 h-16 opacity-30" />
-                <span className="absolute bottom-4 left-4 bg-purple-900 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold">Sedan 4-5 Chỗ</span>
+              <div className="h-48 relative overflow-hidden">
+                <Image
+                  src="/sedan.jpg"
+                  alt="Xe Sedan"
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-300"
+                />
+                <span className="absolute bottom-4 left-4 bg-purple-900 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold z-10">Sedan 4-5 Chỗ</span>
               </div>
               <div className="p-6 space-y-4">
                 <h3 className="text-xl font-bold text-slate-800">Dòng Sedan Đô Thị</h3>
-                <p className="text-xs text-slate-500">Toyota Vios, Mazda 3, Hyundai Accent hoặc tương đương</p>
+                <p className="text-xs text-slate-500">Honda Civic, Mazda 3, Vinfast Lux A hoặc tương đương</p>
                 <div className="border-t border-b border-slate-100 py-3 flex items-center justify-between text-sm">
                   <span className="text-slate-500">Giá chỉ từ:</span>
-                  <span className="text-purple-800 font-extrabold text-lg">700.000đ / ngày</span>
+                  <span className="text-purple-800 font-extrabold text-lg">800.000đ / ngày</span>
                 </div>
                 <ul className="text-xs text-slate-600 space-y-2">
                   <li className="flex items-center gap-2">✓ Số tự động, điều hòa mát lạnh</li>
@@ -474,13 +479,18 @@ export default function LandingPage() {
 
             {/* SUV option */}
             <div className="bg-white rounded-3xl overflow-hidden shadow-md border border-slate-100 hover:shadow-xl transition-shadow">
-              <div className="h-48 bg-slate-200 relative flex items-center justify-center text-slate-400">
-                <Car className="w-16 h-16 opacity-30" />
-                <span className="absolute bottom-4 left-4 bg-purple-900 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold">SUV 5-7 Chỗ</span>
+              <div className="h-48 relative overflow-hidden">
+                <Image
+                  src="/suv.jpg"
+                  alt="Xe SUV"
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-300"
+                />
+                <span className="absolute bottom-4 left-4 bg-purple-900 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold z-10">SUV 5-7 Chỗ</span>
               </div>
               <div className="p-6 space-y-4">
                 <h3 className="text-xl font-bold text-slate-800">Dòng SUV Đa Dụng</h3>
-                <p className="text-xs text-slate-500">Mitsubishi Xpander, Toyota Veloz, Hyundai Creta</p>
+                <p className="text-xs text-slate-500">Hyundai Santafe, Honda CRV, Hyundai Tucson hoặc tương đương</p>
                 <div className="border-t border-b border-slate-100 py-3 flex items-center justify-between text-sm">
                   <span className="text-slate-500">Giá chỉ từ:</span>
                   <span className="text-purple-800 font-extrabold text-lg">900.000đ / ngày</span>
@@ -494,16 +504,21 @@ export default function LandingPage() {
 
             {/* Premium option */}
             <div className="bg-white rounded-3xl overflow-hidden shadow-md border border-slate-100 hover:shadow-xl transition-shadow">
-              <div className="h-48 bg-slate-200 relative flex items-center justify-center text-slate-400">
-                <Car className="w-16 h-16 opacity-30" />
-                <span className="absolute bottom-4 left-4 bg-purple-900 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold">SUV Cao Cấp</span>
+              <div className="h-48 relative overflow-hidden">
+                <Image
+                  src="/luxury.jpg"
+                  alt="Xe Premium"
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-300"
+                />
+                <span className="absolute bottom-4 left-4 bg-purple-900 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold z-10">SUV Cao Cấp</span>
               </div>
               <div className="p-6 space-y-4">
                 <h3 className="text-xl font-bold text-slate-800">Dòng Cao Cấp / Điện</h3>
-                <p className="text-xs text-slate-500">VinFast VF8, Kia Sorento hoặc tương đương</p>
+                <p className="text-xs text-slate-500">VinFast VF3, VF5, VF7, VF8, VF9, Limo Green hoặc tương đương</p>
                 <div className="border-t border-b border-slate-100 py-3 flex items-center justify-between text-sm">
                   <span className="text-slate-500">Giá chỉ từ:</span>
-                  <span className="text-purple-800 font-extrabold text-lg">1.200.000đ / ngày</span>
+                  <span className="text-purple-800 font-extrabold text-lg">500.000đ / ngày</span>
                 </div>
                 <ul className="text-xs text-slate-600 space-y-2">
                   <li className="flex items-center gap-2">✓ Trải nghiệm công nghệ vượt trội, sang trọng</li>
@@ -573,7 +588,7 @@ export default function LandingPage() {
             <ul className="space-y-3 text-sm font-light">
               <li className="flex items-start gap-2">
                 <MapPin className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                <span>Lô 25, đường số 8, khu quy hoạc Đông Nam Thuỷ An, phường Thanh Thuỷ, thành phố Huế</span>
+                <span>Lô 25, đường số 8, khu quy hoạch Đông Nam Thuỷ An, phường Thanh Thuỷ, thành phố Huế</span>
               </li>
               <li className="flex items-center gap-2">
                 <PhoneCall className="w-5 h-5 text-amber-400" />
