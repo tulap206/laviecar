@@ -197,7 +197,7 @@ export function DashboardSidebar({ children }: SidebarProps) {
           {user && (
             <button
               onClick={() => setIsProfileOpen(true)}
-              className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 mx-auto cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200"
+              className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-800 mx-auto cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200"
               title={`${user.displayName} (${user.username})`}
             >
               <span className="text-white text-sm font-semibold uppercase">
@@ -269,7 +269,7 @@ export function DashboardSidebar({ children }: SidebarProps) {
           <div className="space-y-6">
             {/* User Info */}
             <div className="text-center">
-              <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 mx-auto mb-3">
+              <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-800 mx-auto mb-3">
                 <span className="text-white text-2xl font-semibold uppercase">
                   {user?.displayName.charAt(0)}
                 </span>
