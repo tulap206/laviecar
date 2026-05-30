@@ -228,8 +228,20 @@ export default function VehiclesPage() {
   })
 
   const handleAddVehicle = async () => {
-    if (newVehicle.name && newVehicle.licensePlate && newVehicle.pricePerDay) {
-      try {
+    if (!newVehicle.name || !newVehicle.name.trim()) {
+      alert("⚠️ Vui lòng nhập Loại xe!")
+      return
+    }
+    if (!newVehicle.licensePlate || !newVehicle.licensePlate.trim()) {
+      alert("⚠️ Vui lòng nhập Biển số xe!")
+      return
+    }
+    if (!newVehicle.pricePerDay) {
+      alert("⚠️ Vui lòng nhập Giá thuê!")
+      return
+    }
+
+    try {
         // Check if licensePlate already exists
         const existingVehicle = vehicles.find(
           (v) => v.licensePlate.toLowerCase() === newVehicle.licensePlate.toLowerCase()
@@ -307,7 +319,6 @@ export default function VehiclesPage() {
         console.error("Error adding vehicle:", error)
         alert(`❌ Lỗi: ${error instanceof Error ? error.message : "Unknown"}`)
       }
-    }
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: 'vehicle' | 'document', isEdit: boolean = false) => {
