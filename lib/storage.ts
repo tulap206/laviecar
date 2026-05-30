@@ -13,7 +13,17 @@ export async function uploadImage(
   folder: string
 ): Promise<string | null> {
   try {
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`
+    // Sanitize filename to prevent character encoding issues
+    const cleanName = file.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D")
+      .replace(/[^a-zA-Z0-9.\-_]/g, "-")
+      .replace(/-+/g, "-")
+      .toLowerCase()
+
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${cleanName}`
     const filePath = `${folder}/${fileName}`
 
     console.log(`📸 Uploading to ${bucket}/${filePath}`)
@@ -26,7 +36,7 @@ export async function uploadImage(
       })
 
     if (error) {
-      console.error("Upload error:", error)
+      console.error(`❌ [Storage Upload Error] Bucket: ${bucket}, Path: ${filePath}, Details:`, error)
       return null
     }
 
