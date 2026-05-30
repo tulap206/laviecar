@@ -1137,10 +1137,10 @@ export default function VehiclesPage() {
                       className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group"
                     >
                       <img 
-                        src={img} 
+                        src={img instanceof File ? URL.createObjectURL(img) : img} 
                         alt={`Xe ${index + 1}`} 
                         className="w-full h-full object-cover cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage(img)}
+                        onClick={() => setLightboxImage(img instanceof File ? URL.createObjectURL(img) : img)}
                       />
                       <button
                         type="button"
@@ -1175,10 +1175,10 @@ export default function VehiclesPage() {
                       className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group"
                     >
                       <img 
-                        src={img} 
+                        src={img instanceof File ? URL.createObjectURL(img) : img} 
                         alt={`Giấy tờ ${index + 1}`} 
                         className="w-full h-full object-cover cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage(img)}
+                        onClick={() => setLightboxImage(img instanceof File ? URL.createObjectURL(img) : img)}
                       />
                       <button
                         type="button"
