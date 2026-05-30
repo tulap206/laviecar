@@ -235,12 +235,19 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section & Booking Form */}
-      <section className="relative min-h-[85vh] flex items-center justify-center py-12 sm:py-20 overflow-hidden bg-purple-950 text-white">
+      <section 
+        className="relative min-h-[85vh] flex items-center justify-center py-12 sm:py-20 overflow-hidden text-white bg-no-repeat"
+        style={{
+          backgroundImage: 'url(/hue-bg.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
         {/* Background Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-purple-950 via-slate-950 to-indigo-950 opacity-90 z-0" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-purple-950/95 via-slate-950/90 to-indigo-950/95 z-0" />
         {/* Subtle royal pattern indicator using radial gradient */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-700/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-700/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-600/5 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* Hero text (7 columns) */}
