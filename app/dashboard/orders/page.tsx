@@ -132,7 +132,7 @@ function LightboxModal({ imageSrc, onClose }: { imageSrc: string; onClose: () =>
 }
 
 const statusMap = {
-  pending: { label: "Chờ nhận xe", className: "bg-amber-50 text-amber-600" },
+  pending: { label: "Chờ giao xe", className: "bg-amber-50 text-amber-600" },
   active: { label: "Đang thuê", className: "bg-blue-50 text-blue-600" },
   completed: { label: "Hoàn thành", className: "bg-emerald-50 text-emerald-600" },
   cancelled: { label: "Đã hủy", className: "bg-gray-100 text-gray-500" },
@@ -553,7 +553,7 @@ export default function OrdersPage() {
       }
 
       setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: newStatus, revenue, ...updateData } : o)))
-      const statusLabels: Record<string, string> = { pending: "Chờ nhận xe", active: "Đang thuê", completed: "Hoàn thành", cancelled: "Đã hủy" }
+      const statusLabels: Record<string, string> = { pending: "Chờ giao xe", active: "Đang thuê", completed: "Hoàn thành", cancelled: "Đã hủy" }
       if (user) logger.log(user.username, user.displayName, 'Chỉnh sửa', 'Đơn thuê', `Cập nhật đơn ${orderId}: ${statusLabels[newStatus]}`)
     } catch (error) {
       console.error("Exception updating rental status:", error)
@@ -782,7 +782,7 @@ export default function OrdersPage() {
               </SelectTrigger>
               <SelectContent className="bg-white border-gray-200 rounded-xl">
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                <SelectItem value="pending">Chờ nhận xe</SelectItem>
+                <SelectItem value="pending">Chờ giao xe</SelectItem>
                 <SelectItem value="active">Đang thuê</SelectItem>
                 <SelectItem value="completed">Hoàn thành</SelectItem>
                 <SelectItem value="cancelled">Đã hủy</SelectItem>
@@ -1182,7 +1182,7 @@ export default function OrdersPage() {
                   <SelectValue placeholder="Chọn trạng thái" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-200 rounded-xl">
-                  <SelectItem value="pending">Chờ nhận xe</SelectItem>
+                  <SelectItem value="pending">Chờ giao xe</SelectItem>
                   <SelectItem value="active">Đang thuê</SelectItem>
                   <SelectItem value="completed">Hoàn thành</SelectItem>
                   <SelectItem value="cancelled">Đã hủy</SelectItem>
