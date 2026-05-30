@@ -91,7 +91,7 @@ export const fetchVehicles = async () => {
   const [vehiclesResult, rentalsResult] = await Promise.all([
     supabase
       .from('vehicles')
-      .select('id,name,licensePlate,color,pricePerDay,status,current_km,purchasePrice,notes,vehicleImages,documentImages,totalRentalDays,totalRevenue,profit,created_at')
+      .select('id,name,licensePlate,color,pricePerDay,status,current_km,purchasePrice,notes,vehicleImages,documentImages,created_at')
       .order('created_at', { ascending: false }),
     supabase
       .from('rentals')
