@@ -194,7 +194,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-purple-100/50 shadow-sm transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 relative bg-purple-900 rounded-xl overflow-hidden flex items-center justify-center border border-purple-500 shadow-md">
+            <div className="w-16 h-16 relative bg-purple-900 rounded-xl overflow-hidden flex items-center justify-center border border-purple-500 shadow-md">
               <Image 
                 src="/logo.jpg"
                 alt="Lavie Car Rental Logo" 
@@ -206,11 +206,10 @@ export default function LandingPage() {
                   target.style.display = 'none';
                 }}
               />
-              <span className="text-white font-bold text-lg z-10 font-serif">L</span>
             </div>
             <div>
               <span className="text-2xl font-black bg-gradient-to-r from-purple-800 to-amber-600 bg-clip-text text-transparent tracking-wider font-serif">LAVIE CAR</span>
-              <span className="block text-[10px] text-purple-600 font-semibold tracking-widest uppercase">Cho thuê xe ô tô tự lái Huế</span>
+              <span className="block text-[10px] text-purple-600 font-semibold tracking-widest uppercase">Cho thuê xe ô tô tự lái - có lái Huế</span>
             </div>
           </div>
           
