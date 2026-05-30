@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Eye, ClipboardList, Calendar, User, Bike, Pencil, X, ImageIcon, Phone, MapPin, Facebook, Trash2 } from "lucide-react"
+import { Plus, Search, Eye, ClipboardList, Calendar, User, Car, Pencil, X, ImageIcon, Phone, MapPin, Facebook, Trash2 } from "lucide-react"
 
 interface RentalOrder {
   id: string
@@ -1375,7 +1375,7 @@ export default function OrdersPage() {
         <DialogContent className="bg-white border-gray-200 rounded-2xl max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-gray-800 flex items-center gap-2">
-              <Bike className="w-5 h-5 text-blue-500" />
+              <Car className="w-5 h-5 text-blue-500" />
               Chi tiết xe
             </DialogTitle>
           </DialogHeader>

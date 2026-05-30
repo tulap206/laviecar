@@ -46,7 +46,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Plus, Search, Pencil, Trash2, Bike, Eye, Clock, Upload, X, ImageIcon } from "lucide-react"
+import { Plus, Search, Pencil, Trash2, Car, Eye, Clock, Upload, X, ImageIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 
 type VehicleStatus = "available" | "rented" | "maintenance"
@@ -511,7 +511,7 @@ export default function VehiclesPage() {
                   <Label htmlFor="name" className="text-gray-600">Loại xe</Label>
                   <Input
                     id="name"
-                    placeholder="VD: Honda SH 150i"
+                    placeholder="VD: Toyota Vios"
                     value={newVehicle.name}
                     onChange={(e) => setNewVehicle({ ...newVehicle, name: e.target.value })}
                     className="bg-gray-50 border-gray-200 rounded-xl"
@@ -733,12 +733,12 @@ export default function VehiclesPage() {
         <CardContent>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <Bike className="w-12 h-12 mb-3 opacity-50 animate-pulse" />
+              <Car className="w-12 h-12 mb-3 opacity-50 animate-pulse" />
               <p>Đang tải dữ liệu xe...</p>
             </div>
           ) : filteredVehicles.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <Bike className="w-12 h-12 mb-3 opacity-50" />
+              <Car className="w-12 h-12 mb-3 opacity-50" />
               <p>Không tìm thấy xe nào</p>
             </div>
           ) : (
@@ -856,7 +856,7 @@ export default function VehiclesPage() {
                   >
                     {/* Vehicle Icon */}
                     <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                      <Bike className="w-5 h-5 text-blue-500" />
+                      <Car className="w-5 h-5 text-blue-500" />
                     </div>
                     
                     {/* Vehicle Info */}

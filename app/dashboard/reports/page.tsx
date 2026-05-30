@@ -17,7 +17,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
-import { TrendingUp, Bike, Users, ClipboardList, DollarSign, Wallet, Plus, Trash2, Edit2, Search, X } from "lucide-react"
+import { TrendingUp, Car, Users, ClipboardList, DollarSign, Wallet, Plus, Trash2, Edit2, Search, X } from "lucide-react"
 import {
   BarChart,
   Bar,
@@ -468,7 +468,7 @@ export default function ReportsPage() {
       title: "Tổng Xe",
       value: reportData.totalVehicles.toString(),
       change: `${reportData.activeRentals} đang thuê`,
-      icon: Bike,
+      icon: Car,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-500",
     },

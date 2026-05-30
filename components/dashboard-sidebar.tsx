@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { USERS } from "@/contexts/auth-context"
 import {
-  Bike,
+  Car,
   ClipboardList,
   FileText,
   History,
@@ -37,7 +37,7 @@ const menuItems = [
   {
     title: "Quản lý xe",
     href: "/dashboard/vehicles",
-    icon: Bike,
+    icon: Car,
   },
   {
     title: "Khách thuê",
@@ -161,7 +161,7 @@ export function DashboardSidebar({ children }: SidebarProps) {
           <div className="relative w-[86px] h-[86px]">
             <Image
               src="/logo.jpg"
-              alt="3L Moto Logo"
+              alt="La Vie Car Logo"
               fill
               className="object-contain rounded-xl"
             />

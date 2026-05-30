@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Bike, Users, ClipboardList, TrendingUp, Wallet, Eye } from "lucide-react"
+import { Car, Users, ClipboardList, TrendingUp, Wallet, Eye } from "lucide-react"
 import { fetchVehicles, fetchRentals, fetchTransactions } from "@/lib/supabase"
 
 interface DashboardStats {
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                 <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalVehicles}</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-lg">
-                <Bike className="w-6 h-6 text-blue-600" />
+                <Car className="w-6 h-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -328,7 +328,7 @@ export default function DashboardPage() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-300 to-gray-400">
-                      <Bike className="w-12 h-12 text-gray-600" />
+                      <Car className="w-12 h-12 text-gray-600" />
                     </div>
                   )}
                 </div>

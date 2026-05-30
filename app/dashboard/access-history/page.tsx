@@ -16,7 +16,7 @@ import {
   Trash2, 
   Eye, 
   FileText,
-  Bike,
+  Car,
   Users,
   ClipboardList,
   Filter,
@@ -45,7 +45,7 @@ const actionIconMap: Record<string, { icon: React.ElementType; color: string; bg
 
 const moduleIconMap: Record<string, { icon: React.ElementType; color: string }> = {
   "Hệ thống": { icon: Settings, color: "text-gray-600" },
-  "Quản lý xe": { icon: Bike, color: "text-blue-600" },
+  "Quản lý xe": { icon: Car, color: "text-blue-600" },
   "Quản lý khách hàng": { icon: Users, color: "text-emerald-600" },
   "Đơn thuê": { icon: ClipboardList, color: "text-amber-600" },
   "Báo cáo": { icon: FileText, color: "text-violet-600" },

@@ -11,8 +11,8 @@ import './globals.css'
 //});
 
 export const metadata: Metadata = {
-  title: '3L Moto - Quản lý cho thuê xe máy',
-  description: 'Hệ thống quản lý cho thuê xe máy 3L Moto',
+  title: 'La Vie Car - Quản lý cho thuê xe ô tô tự lái',
+  description: 'Hệ thống quản lý cho thuê xe ô tô tự lái La Vie Car',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
