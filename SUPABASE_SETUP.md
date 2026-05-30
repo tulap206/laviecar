@@ -164,6 +164,23 @@ CREATE INDEX idx_access_logs_timestamp ON access_logs(timestamp);
 CREATE INDEX idx_access_logs_module ON access_logs(module);
 ```
 
+### Table: `transactions`
+```sql
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  type TEXT NOT NULL, -- 'income' | 'expense'
+  description TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  "user" TEXT NOT NULL,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_by TEXT
+);
+
+CREATE INDEX idx_transactions_timestamp ON transactions(timestamp);
+CREATE INDEX idx_transactions_type ON transactions(type);
+```
+
 ---
 
 ## 📝 Cách dùng
