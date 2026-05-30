@@ -238,7 +238,7 @@ export default function LandingPage() {
       <section 
         className="relative min-h-[85vh] flex items-center justify-center py-12 sm:py-20 overflow-hidden text-white bg-no-repeat"
         style={{
-          backgroundImage: 'url(/hue-bg.png)',
+          backgroundImage: 'url(/hue-car-bg.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

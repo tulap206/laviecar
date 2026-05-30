@@ -57,7 +57,7 @@ export default function LoginPage() {
     <div 
       className="min-h-screen flex items-center justify-center p-6 relative"
       style={{
-        backgroundImage: 'url(/login-bg.png)',
+        backgroundImage: 'url(/hue-car-bg.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed',
