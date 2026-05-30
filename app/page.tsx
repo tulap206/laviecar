@@ -209,8 +209,8 @@ export default function LandingPage() {
               <span className="text-white font-bold text-lg z-10 font-serif">L</span>
             </div>
             <div>
-              <span className="text-2xl font-black bg-gradient-to-r from-purple-800 to-amber-600 bg-clip-text text-transparent tracking-wider font-serif">LAVIE CAR RENTAL</span>
-              <span className="block text-[10px] text-purple-600 font-semibold tracking-widest uppercase">Cho thuê xe ô tô tự lái - có lái Huế</span>
+              <span className="text-2xl font-black bg-gradient-to-r from-purple-800 to-amber-600 bg-clip-text text-transparent tracking-wider font-serif">LAVIE CAR</span>
+              <span className="block text-[10px] text-purple-600 font-semibold tracking-widest uppercase">Cho thuê xe ô tô tự lái Huế</span>
             </div>
           </div>
           
@@ -598,7 +598,7 @@ export default function LandingPage() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-4">
-          <p>© 2026 Lavie Car Rental. Tất cả quyền được bảo lưu. Phát triển bởi Phan Lê Tự Lập.</p>
+          <p>© 2026 Lavie Car Rental. Phát triển bởi Phan Lê Tự Lập.</p>
           <div className="flex gap-4">
             <a href="#" className="hover:underline">Điều khoản dịch vụ</a>
             <a href="#" className="hover:underline">Chính sách bảo mật</a>

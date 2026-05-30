@@ -83,14 +83,13 @@ CREATE TABLE IF NOT EXISTS customers (
   phone TEXT NOT NULL,
   facebook TEXT,
   address TEXT,
-  "idCard" TEXT,
-  "totalRentals" INTEGER DEFAULT 0,
+  idcard TEXT,
+  totalrentals INTEGER DEFAULT 0,
   status TEXT DEFAULT 'active', -- 'active' | 'inactive'
-  "customerPhoto" TEXT[] DEFAULT ARRAY[]::TEXT[],
-  "cccdFront" TEXT[] DEFAULT ARRAY[]::TEXT[],
-  "cccdBack" TEXT[] DEFAULT ARRAY[]::TEXT[],
-  "licenseFront" TEXT[] DEFAULT ARRAY[]::TEXT[],
-  "licenseBack" TEXT[] DEFAULT ARRAY[]::TEXT[],
+  cccdfront TEXT[] DEFAULT ARRAY[]::TEXT[],
+  cccdback TEXT[] DEFAULT ARRAY[]::TEXT[],
+  licensefront TEXT[] DEFAULT ARRAY[]::TEXT[],
+  licenseback TEXT[] DEFAULT ARRAY[]::TEXT[],
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -108,7 +107,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   color TEXT,
   "pricePerDay" INTEGER NOT NULL,
   status TEXT DEFAULT 'available', -- 'available' | 'rented' | 'maintenance'
-  "currentKm" INTEGER DEFAULT 0,
+  current_km INTEGER DEFAULT 0,
   "purchasePrice" INTEGER,
   notes TEXT,
   "vehicleImages" TEXT[] DEFAULT ARRAY[]::TEXT[],

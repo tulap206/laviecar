@@ -100,7 +100,7 @@ export function DashboardSidebar({ children }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex items-center justify-center h-24 border-b border-gray-100">
-          <div className="relative w-[86px] h-[86px]">
+          <div className="relative w-[68px] h-[68px]">
             <Image
               src="/logo.jpg"
               alt="Lavie Car Rental Logo"
