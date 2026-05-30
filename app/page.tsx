@@ -227,7 +227,7 @@ export default function LandingPage() {
               className="px-5 py-2.5 rounded-xl border border-purple-200 hover:border-purple-600 hover:text-purple-800 transition-all font-semibold text-sm flex items-center gap-2 hover:shadow-sm"
             >
               <User className="w-4 h-4" />
-              <span>Đăng nhập Admin</span>
+              <span>Đăng nhập</span>
             </Link>
           </div>
         </div>
@@ -255,9 +255,9 @@ export default function LandingPage() {
               <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
               Cho thuê xe ô tô tự lái – có lái Huế
             </span>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-serif leading-tight text-white uppercase">
-              Xe Của Bạn, <br />
-              <span className="bg-gradient-to-r from-amber-400 via-purple-300 to-amber-300 bg-clip-text text-transparent">Hành Trình Của Bạn</span>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-serif leading-tight text-white uppercase">
+              <span className="block">Xe Của Bạn,</span>
+              <span className="block bg-gradient-to-r from-amber-400 via-purple-300 to-amber-300 bg-clip-text text-transparent">Hành Trình Của Bạn</span>
             </h1>
             <p className="text-lg text-slate-300 max-w-xl mx-auto lg:mx-0 leading-relaxed font-light">
               Lavie Car Rental chuyên cung cấp dịch vụ cho thuê xe ô tô tự lái và có lái tại Huế, City Tour Huế, đón tiễn sân bay Phú Bài, nhận chạy hợp đồng du lịch đi các tỉnh. Cam kết giá cả hợp lý, xe đời mới đa dạng, an toàn tuyệt đối và hỗ trợ 24/7.
