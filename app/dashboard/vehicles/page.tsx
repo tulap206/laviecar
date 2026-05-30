@@ -275,24 +275,32 @@ export default function VehiclesPage() {
           documentImages: documentImageUrls,
         }
         
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('vehicles')
           .insert([vehicle])
+          .select()
         
         if (error) {
           console.error("Error adding vehicle:", error)
           alert(`❌ Lỗi: ${error.message}`)
-        } else {
+        } else if (data && data.length > 0) {
+          const insertedVehicle = data[0]
           // Add new vehicle and sort (newest first)
-          const updated = [...vehicles, vehicle]
+          const updated = [...vehicles, insertedVehicle]
           const sorted = updated.sort((a, b) => {
             const dateA = new Date(a.created_at || 0).getTime()
             const dateB = new Date(b.created_at || 0).getTime()
             return dateB - dateA // DESC (newest first)
           })
           setVehicles(sorted)
-          if (user) logger.addVehicle(user.username, user.displayName, vehicle.name, vehicle.licensePlate)
+          if (user) logger.addVehicle(user.username, user.displayName, insertedVehicle.name, insertedVehicle.licensePlate)
           setNewVehicle({ name: "", licensePlate: "", color: "", pricePerDay: "", current_km: "", purchasePrice: "", notes: "", status: "available", vehicleImages: [], documentImages: [] })
+          setIsAddDialogOpen(false)
+        } else {
+          console.warn("⚠️ No data returned after vehicle insertion")
+          // Fallback if success but no data returned
+          const updated = [...vehicles, vehicle]
+          setVehicles(updated)
           setIsAddDialogOpen(false)
         }
       } catch (error) {
