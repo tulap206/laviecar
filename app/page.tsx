@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { 
   Car, Calendar, User, Phone, MapPin, Facebook, 
   Shield, Clock, Star, CheckCircle, ArrowRight, 
-  Menu, X, HelpCircle, PhoneCall, Check, Loader2 
+  Menu, X, HelpCircle, PhoneCall, Check, Loader2, MessageCircle 
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -35,6 +35,7 @@ export default function LandingPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null)
+  const [isOpenContact, setIsOpenContact] = useState(false)
   
   // Calculate total rental days
   useEffect(() => {
@@ -209,7 +210,7 @@ export default function LandingPage() {
             </div>
             <div>
               <span className="text-2xl font-black bg-gradient-to-r from-purple-800 to-amber-600 bg-clip-text text-transparent tracking-wider font-serif">LAVIE CAR</span>
-              <span className="block text-[10px] text-purple-600 font-semibold tracking-widest uppercase">Cho thuê xe ô tô tự lái - có lái Huế</span>
+              <span className="block text-[10px] text-purple-600 font-semibold tracking-widest uppercase">Cho thuê xe ô tô tự lái</span>
             </div>
           </div>
           
@@ -253,7 +254,7 @@ export default function LandingPage() {
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-800/60 border border-purple-500/30 text-amber-300 text-xs font-semibold uppercase tracking-wider">
               <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-              Cho thuê xe ô tô tự lái – có lái Huế
+              Cho thuê xe ô tô tự lái
             </span>
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-serif leading-tight text-white uppercase">
               <span className="block">Xe Của Bạn,</span>
@@ -282,7 +283,7 @@ export default function LandingPage() {
           {/* Booking Form (5 columns) */}
           <div id="booking" className="lg:col-span-5 bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-purple-100 hover:shadow-purple-900/10 transition-all duration-300">
             <h2 className="text-2xl font-bold text-purple-950 font-serif text-center mb-6">
-              Tìm Xe Ô Tô Trống
+              Đặt xe trực tuyến
             </h2>
             
             <form onSubmit={handleSearch} className="space-y-4">
@@ -572,7 +573,7 @@ export default function LandingPage() {
             <ul className="space-y-3 text-sm font-light">
               <li className="flex items-start gap-2">
                 <MapPin className="w-5 h-5 text-amber-400 flex-shrink-0" />
-                <span>12 Lê Lợi, Vĩnh Ninh, Thành phố Huế, Thừa Thiên Huế</span>
+                <span>Lô 25, đường số 8, khu quy hoạc Đông Nam Thuỷ An, phường Thanh Thuỷ, thành phố Huế</span>
               </li>
               <li className="flex items-center gap-2">
                 <PhoneCall className="w-5 h-5 text-amber-400" />
@@ -702,6 +703,76 @@ export default function LandingPage() {
           </div>
         </div>
       )}
+
+      {/* Floating Contact Buttons */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+        {isOpenContact && (
+          <div className="flex flex-col items-end gap-3 mb-2 animate-in slide-in-from-bottom-5 fade-in duration-200">
+            {/* Zalo Button */}
+            <a 
+              href="https://zalo.me/0363077775" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-full shadow-lg transition-all transform hover:scale-105"
+            >
+              <span className="text-xs font-semibold">Chat Zalo</span>
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 text-white" />
+              </div>
+            </a>
+
+            {/* Facebook Button */}
+            <a 
+              href="https://facebook.com/thuexeototulaihue" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-purple-900 hover:bg-purple-950 text-white px-4 py-2.5 rounded-full shadow-lg transition-all transform hover:scale-105"
+            >
+              <span className="text-xs font-semibold">Facebook Page</span>
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <Facebook className="w-4 h-4 text-white" />
+              </div>
+            </a>
+
+            {/* Hotline 1 */}
+            <a 
+              href="tel:0363077775" 
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-full shadow-lg transition-all transform hover:scale-105"
+            >
+              <span className="text-xs font-semibold">Hotline: 0363.077.775</span>
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <PhoneCall className="w-4 h-4 text-white" />
+              </div>
+            </a>
+
+            {/* Hotline 2 */}
+            <a 
+              href="tel:0981323653" 
+              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-full shadow-lg transition-all transform hover:scale-105"
+            >
+              <span className="text-xs font-semibold">Hotline: 0981.323.653</span>
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <PhoneCall className="w-4 h-4 text-white" />
+              </div>
+            </a>
+          </div>
+        )}
+
+        {/* Main Floating Toggle Button */}
+        <button
+          onClick={() => setIsOpenContact(!isOpenContact)}
+          className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white transition-all transform hover:scale-110 active:scale-95 cursor-pointer ${
+            isOpenContact ? 'bg-red-500 hover:bg-red-600 rotate-90' : 'bg-purple-950 hover:bg-purple-900 animate-bounce'
+          }`}
+          style={{ animationDuration: '3s' }}
+        >
+          {isOpenContact ? (
+            <X className="w-6 h-6" />
+          ) : (
+            <PhoneCall className="w-6 h-6 text-amber-300 animate-pulse" />
+          )}
+        </button>
+      </div>
     </div>
   )
 }
