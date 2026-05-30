@@ -11,8 +11,8 @@ import './globals.css'
 //});
 
 export const metadata: Metadata = {
-  title: 'La Vie Car - Quản lý cho thuê xe ô tô tự lái',
-  description: 'Hệ thống quản lý cho thuê xe ô tô tự lái La Vie Car',
+  title: 'Lavie Car Rental - Quản lý cho thuê xe ô tô tự lái',
+  description: 'Hệ thống quản lý cho thuê xe ô tô tự lái Lavie Car Rental',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

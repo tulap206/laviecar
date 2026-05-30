@@ -72,13 +72,13 @@ export default function LoginPage() {
           <div className="relative w-24 h-24 mb-6">
             <Image
               src="/logo.jpg"
-              alt="La Vie Car Logo"
+              alt="Lavie Car Rental Logo"
               fill
               className="object-contain rounded-2xl card-shadow"
               priority
             />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-lg">La Vie Car</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-lg">Lavie Car Rental</h1>
           <p className="text-white text-lg mt-2 drop-shadow-md font-medium">Hệ thống quản lý cho thuê xe ô tô tự lái</p>
         </div>
 
@@ -172,7 +172,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-sm font-semibold text-white drop-shadow-lg mt-10">
-          La Vie Car Huế - By Phan Lê Tự Lập
+          Lavie Car Rental Huế - By Phan Lê Tự Lập
         </p>
       </div>
     </div>

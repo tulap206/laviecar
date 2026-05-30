@@ -103,7 +103,7 @@ export function DashboardSidebar({ children }: SidebarProps) {
           <div className="relative w-[86px] h-[86px]">
             <Image
               src="/logo.jpg"
-              alt="La Vie Car Logo"
+              alt="Lavie Car Rental Logo"
               fill
               className="object-contain rounded-xl"
             />

@@ -197,7 +197,7 @@ export default function LandingPage() {
             <div className="w-12 h-12 relative bg-purple-900 rounded-xl overflow-hidden flex items-center justify-center border border-purple-500 shadow-md">
               <Image 
                 src="/logo.jpg"
-                alt="La Vie Car Logo" 
+                alt="Lavie Car Rental Logo" 
                 fill
                 className="object-contain"
                 onError={(e) => {
@@ -209,8 +209,8 @@ export default function LandingPage() {
               <span className="text-white font-bold text-lg z-10 font-serif">L</span>
             </div>
             <div>
-              <span className="text-2xl font-black bg-gradient-to-r from-purple-800 to-amber-600 bg-clip-text text-transparent tracking-wider font-serif">LA VIE CAR</span>
-              <span className="block text-[10px] text-purple-600 font-semibold tracking-widest uppercase">Self-Drive Rental Huế</span>
+              <span className="text-2xl font-black bg-gradient-to-r from-purple-800 to-amber-600 bg-clip-text text-transparent tracking-wider font-serif">LAVIE CAR RENTAL</span>
+              <span className="block text-[10px] text-purple-600 font-semibold tracking-widest uppercase">Cho thuê xe ô tô tự lái - có lái Huế</span>
             </div>
           </div>
           
@@ -254,14 +254,14 @@ export default function LandingPage() {
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-800/60 border border-purple-500/30 text-amber-300 text-xs font-semibold uppercase tracking-wider">
               <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-              Dịch vụ thuê xe ô tô tự lái uy tín tại Huế
+              Cho thuê xe ô tô tự lái – có lái Huế
             </span>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-serif leading-tight text-white">
-              Khám Phá Cố Đô <br />
-              <span className="bg-gradient-to-r from-amber-400 via-purple-300 to-amber-300 bg-clip-text text-transparent">Trọn Vẹn & Tự Do</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-serif leading-tight text-white uppercase">
+              Xe Của Bạn, <br />
+              <span className="bg-gradient-to-r from-amber-400 via-purple-300 to-amber-300 bg-clip-text text-transparent">Hành Trình Của Bạn</span>
             </h1>
             <p className="text-lg text-slate-300 max-w-xl mx-auto lg:mx-0 leading-relaxed font-light">
-              La Vie Car cung cấp các dòng xe ô tô đời mới, vận hành êm ái, thủ tục nhanh chóng, mang đến cho bạn chuyến du lịch, công tác tại thành phố Huế cổ kính thật an tâm và trọn vẹn.
+              Lavie Car Rental chuyên cung cấp dịch vụ cho thuê xe ô tô tự lái và có lái tại Huế, City Tour Huế, đón tiễn sân bay Phú Bài, nhận chạy hợp đồng du lịch đi các tỉnh. Cam kết giá cả hợp lý, xe đời mới đa dạng, an toàn tuyệt đối và hỗ trợ 24/7.
             </p>
             
             <div className="hidden lg:flex items-center gap-6 pt-4 text-sm text-purple-300">
@@ -311,7 +311,7 @@ export default function LandingPage() {
                     id="phone"
                     type="tel"
                     required
-                    placeholder="0912 345 678"
+                    placeholder="0363 077 775"
                     className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
@@ -402,7 +402,7 @@ export default function LandingPage() {
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <span className="text-purple-700 font-bold uppercase tracking-wider text-sm block">Đặc Quyền Của Bạn</span>
             <h2 className="text-3xl sm:text-4xl font-bold font-serif text-purple-950">
-              Tại sao nên thuê xe ô tô tự lái tại La Vie Car?
+              Tại sao nên thuê xe ô tô tự lái tại Lavie Car Rental?
             </h2>
             <div className="w-20 h-1 bg-amber-500 mx-auto rounded-full mt-4" />
           </div>
@@ -412,9 +412,9 @@ export default function LandingPage() {
               <div className="w-14 h-14 bg-purple-950 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                 <Car className="w-7 h-7 text-amber-300" />
               </div>
-              <h3 className="text-xl font-bold text-purple-950 font-serif">Xe Đời Mới & Đa Dạng</h3>
+              <h3 className="text-xl font-bold text-purple-950 font-serif">Giá Cả Hợp Lý</h3>
               <p className="text-slate-600 leading-relaxed text-sm">
-                Chúng tôi cung cấp các dòng xe Sedan, SUV đời mới từ 4-7 chỗ sạch sẽ, hoạt động ổn định, được bảo dưỡng định kỳ thường xuyên.
+                Chúng tôi cam kết mang lại mức giá cạnh tranh và hợp lý nhất cho mọi hành trình du lịch hoặc công tác của bạn tại Huế.
               </p>
             </div>
 
@@ -422,9 +422,9 @@ export default function LandingPage() {
               <div className="w-14 h-14 bg-purple-950 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                 <Shield className="w-7 h-7 text-amber-300" />
               </div>
-              <h3 className="text-xl font-bold text-purple-950 font-serif">An Tâm Lộ Trình</h3>
+              <h3 className="text-xl font-bold text-purple-950 font-serif">Đa Dạng Các Loại Xe</h3>
               <p className="text-slate-600 leading-relaxed text-sm">
-                Mỗi chiếc xe đều có định vị GPS, camera hành trình và đầy đủ giấy tờ bảo hiểm dân sự, hỗ trợ kỹ thuật suốt dọc đường di chuyển.
+                Đội xe phong phú từ sedan đến SUV 4-7 chỗ đời mới, sạch sẽ, hoạt động ổn định, bảo dưỡng định kỳ và đầy đủ tiện nghi.
               </p>
             </div>
 
@@ -432,9 +432,9 @@ export default function LandingPage() {
               <div className="w-14 h-14 bg-purple-950 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                 <MapPin className="w-7 h-7 text-amber-300" />
               </div>
-              <h3 className="text-xl font-bold text-purple-950 font-serif">Giao Xe Tận Nơi Tại Huế</h3>
+              <h3 className="text-xl font-bold text-purple-950 font-serif">An Toàn Tuyệt Đối, Hỗ Trợ 24/7</h3>
               <p className="text-slate-600 leading-relaxed text-sm">
-                Hỗ trợ giao và nhận xe linh hoạt tận nơi tại Sân bay Phú Bài, Ga Huế, hoặc các khách sạn trung tâm thành phố Huế để bạn thuận tiện nhất.
+                Chúng tôi luôn đồng hành cùng bạn trên mọi nẻo đường với đội ngũ nhân viên nhiệt tình, hỗ trợ kỹ thuật và cứu hộ 24/7.
               </p>
             </div>
           </div>
@@ -562,9 +562,9 @@ export default function LandingPage() {
       <footer id="contact" className="bg-purple-950 text-slate-300 pt-16 pb-8 border-t border-purple-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-12 pb-12 border-b border-purple-900/60">
           <div className="space-y-4">
-            <span className="text-xl font-bold font-serif text-white tracking-wider">LA VIE CAR HUẾ</span>
+            <span className="text-xl font-bold font-serif text-white tracking-wider">LAVIE CAR RENTAL</span>
             <p className="text-sm text-slate-400 font-light leading-relaxed">
-              Dịch vụ cho thuê xe ô tô tự lái uy tín chất lượng hàng đầu tại thành phố Huế. Cùng bạn tạo nên những chuyến hành trình hạnh phúc và trọn vẹn nhất.
+              Dịch vụ cho thuê xe ô tô tự lái và có lái chất lượng hàng đầu tại thành phố Huế. Cùng bạn tạo nên những chuyến hành trình hạnh phúc và trọn vẹn nhất.
             </p>
           </div>
 
@@ -577,11 +577,11 @@ export default function LandingPage() {
               </li>
               <li className="flex items-center gap-2">
                 <PhoneCall className="w-5 h-5 text-amber-400" />
-                <span>Hotline: 0912 345 678</span>
+                <span>Hotline: 0363.077.775 - 0981.323.653</span>
               </li>
               <li className="flex items-center gap-2">
                 <Facebook className="w-5 h-5 text-amber-400" />
-                <a href="#" className="hover:underline">facebook.com/laviecarhue</a>
+                <a href="https://facebook.com/thuexeototulaihue" target="_blank" rel="noopener noreferrer" className="hover:underline">fb.com/thuexeototulaihue</a>
               </li>
             </ul>
           </div>
@@ -598,7 +598,7 @@ export default function LandingPage() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-4">
-          <p>© 2026 La Vie Car. Tất cả quyền được bảo lưu. Phát triển bởi Phan Lê Tự Lập.</p>
+          <p>© 2026 Lavie Car Rental. Tất cả quyền được bảo lưu. Phát triển bởi Phan Lê Tự Lập.</p>
           <div className="flex gap-4">
             <a href="#" className="hover:underline">Điều khoản dịch vụ</a>
             <a href="#" className="hover:underline">Chính sách bảo mật</a>
@@ -638,7 +638,7 @@ export default function LandingPage() {
                     Chào mừng bạn <span className="font-semibold text-purple-950">{formData.name}</span>! Chúng tôi đã tiếp nhận yêu cầu thuê xe <span className="font-semibold text-purple-950">{selectedVehicle?.name}</span> ({selectedVehicle?.licensePlate}) của bạn.
                   </p>
                   <p className="text-xs text-amber-600 font-semibold bg-amber-50 p-3 rounded-xl border border-amber-200">
-                    Bộ phận hỗ trợ La Vie Car sẽ liên hệ trực tiếp với bạn qua số điện thoại <strong>{formData.phone}</strong> trong vòng 10-15 phút để hoàn tất thủ tục và giao xe!
+                    Bộ phận hỗ trợ Lavie Car Rental sẽ liên hệ trực tiếp với bạn qua số điện thoại <strong>{formData.phone}</strong> trong vòng 10-15 phút để hoàn tất thủ tục và giao xe!
                   </p>
                   <Button 
                     onClick={closeBookingModal}
