@@ -360,11 +360,50 @@ export default function VehiclesPage() {
   const handleEditVehicle = async () => {
     if (editingVehicle) {
       try {
+        // Separate existing URL strings from new File objects
+        const existingVehicleImages = (editingVehicle.vehicleImages || []).filter((img: any) => typeof img === 'string') as string[]
+        const newVehicleImageFiles = (editingVehicle.vehicleImages || []).filter((img: any) => img instanceof File) as File[]
+
+        const existingDocumentImages = (editingVehicle.documentImages || []).filter((img: any) => typeof img === 'string') as string[]
+        const newDocumentImageFiles = (editingVehicle.documentImages || []).filter((img: any) => img instanceof File) as File[]
+
+        // Upload new images if any
+        let newVehicleImageUrls: string[] = []
+        if (newVehicleImageFiles.length > 0) {
+          console.log("📸 Uploading new vehicle images for edit...")
+          newVehicleImageUrls = await uploadMultipleImages(
+            newVehicleImageFiles,
+            "vehicles",
+            "vehicle-images"
+          )
+        }
+
+        let newDocumentImageUrls: string[] = []
+        if (newDocumentImageFiles.length > 0) {
+          console.log("📄 Uploading new document images for edit...")
+          newDocumentImageUrls = await uploadMultipleImages(
+            newDocumentImageFiles,
+            "vehicles",
+            "document-images"
+          )
+        }
+
+        // Combine existing URLs and new uploaded URLs
+        const finalVehicleImages = [...existingVehicleImages, ...newVehicleImageUrls]
+        const finalDocumentImages = [...existingDocumentImages, ...newDocumentImageUrls]
+
         // Parse formatted money values back to numbers
         const updateData = {
-          ...editingVehicle,
+          name: editingVehicle.name,
+          licensePlate: editingVehicle.licensePlate,
+          color: editingVehicle.color,
           pricePerDay: parseMoneyInput(editingVehicle.pricePerDay.toString()),
+          current_km: parseInt(editingVehicle.current_km.toString()) || 0,
           purchasePrice: parseMoneyInput(editingVehicle.purchasePrice?.toString() || '0'),
+          notes: editingVehicle.notes,
+          status: editingVehicle.status,
+          vehicleImages: finalVehicleImages,
+          documentImages: finalDocumentImages,
         }
         
         const { error } = await supabase
@@ -374,14 +413,21 @@ export default function VehiclesPage() {
         
         if (error) {
           console.error("Error updating vehicle:", error)
+          alert(`❌ Lỗi khi cập nhật: ${error.message}`)
         } else {
-          setVehicles(vehicles.map((v) => (v.id === editingVehicle.id ? updateData : v)))
+          // Sync with state
+          const fullUpdatedVehicle = {
+            ...editingVehicle,
+            ...updateData,
+          }
+          setVehicles(vehicles.map((v) => (v.id === editingVehicle.id ? fullUpdatedVehicle : v)))
           if (user) logger.editVehicle(user.username, user.displayName, editingVehicle.name, editingVehicle.licensePlate)
           setIsEditDialogOpen(false)
           setEditingVehicle(null)
         }
       } catch (error) {
         console.error("Error updating vehicle:", error)
+        alert(`❌ Lỗi: ${error instanceof Error ? error.message : "Unknown"}`)
       }
     }
   }
