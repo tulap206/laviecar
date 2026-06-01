@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase, fetchCustomers } from "@/lib/supabase"
+import { supabase, fetchCustomers, fetchRentals } from "@/lib/supabase"
 import { logger } from "@/lib/logger"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,7 +28,7 @@ interface Customer {
   address: string
   idcard: string
   totalrentals: number
-  status: "active" | "inactive"
+  status: "active" | "inactive" | "renting" | "pending"
   createdat: string
   customerphoto?: string[]
   cccdfront?: string[]
@@ -91,6 +91,19 @@ const ImageUploadButton = ({
   )
 }
 
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case "renting":
+      return { className: "bg-blue-50 text-blue-600 border-blue-200", label: "Đang thuê" }
+    case "pending":
+      return { className: "bg-yellow-50 text-yellow-600 border-yellow-200", label: "Chờ giao xe" }
+    case "inactive":
+      return { className: "bg-gray-100 text-gray-500", label: "Ngừng hoạt động" }
+    default:
+      return { className: "bg-emerald-50 text-emerald-600 border-emerald-200", label: "Sẵn sàng" }
+  }
+}
+
 export default function CustomersPage() {
   const { user } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -120,12 +133,38 @@ export default function CustomersPage() {
     const loadData = async () => {
       try {
         setLoading(true)
-        const data = await fetchCustomers()
-        // Sort by created_at or createdat descending (newest first) - client-side backup
-        const sorted = data.sort((a, b) => {
+        const [customersData, rentalsData] = await Promise.all([
+          fetchCustomers(),
+          fetchRentals()
+        ])
+        
+        const updated = customersData.map((customer) => {
+          const activeRental = rentalsData.find(
+            (rental: any) => rental.customerId === customer.id && rental.status === "active"
+          )
+          const pendingRental = rentalsData.find(
+            (rental: any) => rental.customerId === customer.id && rental.status === "pending"
+          )
+          
+          let statusLabel = "active"
+          if (activeRental) {
+            statusLabel = "renting"
+          } else if (pendingRental) {
+            statusLabel = "pending"
+          } else if (customer.status === "inactive") {
+            statusLabel = "inactive"
+          }
+          
+          return {
+            ...customer,
+            status: statusLabel as any
+          }
+        })
+
+        const sorted = updated.sort((a, b) => {
           const dateA = new Date(a.createdat || a.created_at || 0).getTime()
           const dateB = new Date(b.createdat || b.created_at || 0).getTime()
-          return dateB - dateA // DESC (newest first)
+          return dateB - dateA
         })
         setCustomers(sorted)
       } catch (error) {
@@ -373,12 +412,36 @@ export default function CustomersPage() {
         if (user) logger.addCustomer(user.username, user.displayName, formData.name, formData.phone)
       }
       
-      const updatedCustomers = await fetchCustomers()
-      // Sort by created_at or createdat descending (newest first)
-      const sorted = updatedCustomers.sort((a, b) => {
+      const [updatedCustomers, rentalsData] = await Promise.all([
+        fetchCustomers(),
+        fetchRentals()
+      ])
+      const updated = updatedCustomers.map((customer) => {
+        const activeRental = rentalsData.find(
+          (rental: any) => rental.customerId === customer.id && rental.status === "active"
+        )
+        const pendingRental = rentalsData.find(
+          (rental: any) => rental.customerId === customer.id && rental.status === "pending"
+        )
+        
+        let statusLabel = "active"
+        if (activeRental) {
+          statusLabel = "renting"
+        } else if (pendingRental) {
+          statusLabel = "pending"
+        } else if (customer.status === "inactive") {
+          statusLabel = "inactive"
+        }
+        
+        return {
+          ...customer,
+          status: statusLabel as any
+        }
+      })
+      const sorted = updated.sort((a, b) => {
         const dateA = new Date(a.createdat || a.created_at || 0).getTime()
         const dateB = new Date(b.createdat || b.created_at || 0).getTime()
-        return dateB - dateA // DESC (newest first)
+        return dateB - dateA
       })
       setCustomers(sorted)
       setIsDialogOpen(false)
@@ -696,8 +759,8 @@ export default function CustomersPage() {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <Badge className={customer.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"}>
-                            {customer.status === "active" ? "Hoạt động" : "Ngừng"}
+                          <Badge className={getStatusBadge(customer.status).className}>
+                            {getStatusBadge(customer.status).label}
                           </Badge>
                         </td>
                         <td className="py-3 px-4">
@@ -745,10 +808,10 @@ export default function CustomersPage() {
                         </div>
                         <span
                           className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                            customer.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"
+                            getStatusBadge(customer.status).className
                           }`}
                         >
-                          {customer.status === "active" ? "Hoạt động" : "Ngừng"}
+                          {getStatusBadge(customer.status).label}
                         </span>
                       </div>
                       
@@ -841,8 +904,8 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Trạng thái</p>
-                  <Badge className={viewingCustomer.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"}>
-                    {viewingCustomer.status === "active" ? "Hoạt động" : "Ngừng"}
+                  <Badge className={getStatusBadge(viewingCustomer.status).className}>
+                    {getStatusBadge(viewingCustomer.status).label}
                   </Badge>
                 </div>
                 <div>
