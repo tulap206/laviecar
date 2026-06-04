@@ -650,7 +650,7 @@ export default function LandingPage() {
                   </div>
                   <h4 className="text-2xl font-bold text-purple-950 font-serif">Đặt xe thành công!</h4>
                   <p className="text-slate-600 text-sm leading-relaxed">
-                    Chào mừng bạn <span className="font-semibold text-purple-950">{formData.name}</span>! Chúng tôi đã tiếp nhận yêu cầu thuê xe <span className="font-semibold text-purple-950">{selectedVehicle?.name}</span> ({selectedVehicle?.licensePlate}) của bạn.
+                    Chào mừng bạn <span className="font-semibold text-purple-950">{formData.name}</span>! Chúng tôi đã tiếp nhận yêu cầu thuê xe <span className="font-semibold text-purple-950">{selectedVehicle?.name}</span> của bạn.
                   </p>
                   <p className="text-xs text-amber-600 font-semibold bg-amber-50 p-3 rounded-xl border border-amber-200">
                     Bộ phận hỗ trợ Lavie Car Rental sẽ liên hệ trực tiếp với bạn qua số điện thoại <strong>{formData.phone}</strong> trong vòng 10-15 phút để hoàn tất thủ tục và giao xe!
@@ -683,9 +683,7 @@ export default function LandingPage() {
                               <div>
                                 <h4 className="font-bold text-slate-800 text-base">{vehicle.name}</h4>
                                 <div className="flex gap-3 text-xs text-slate-500 mt-1">
-                                  <span>Biển số: <strong className="font-mono text-slate-700">{vehicle.licensePlate}</strong></span>
-                                  <span>•</span>
-                                  <span>Màu: <strong>{vehicle.color || "Nhiều màu"}</strong></span>
+                                  <span>Màu sắc: <strong>{vehicle.color || "Nhiều màu"}</strong></span>
                                 </div>
                               </div>
                             </div>
