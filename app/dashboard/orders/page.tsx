@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { useAuth } from "@/contexts/auth-context"
 import { logger } from "@/lib/logger"
@@ -180,48 +180,67 @@ export default function OrdersPage() {
   })
 
   // Load data from Supabase
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        const [vehiclesData, customersData, rentalsData] = await Promise.all([
-          fetchVehicles(),
-          fetchCustomers(),
-          fetchRentals(),
-        ])
-        setVehicles(vehiclesData || [])
-        setCustomers(customersData || [])
-        
-        // Sort rentals by created_at descending (newest first) - client-side backup
-        const sortedRentals = (rentalsData || []).sort((a, b) => {
-          const dateA = new Date(a.created_at || 0).getTime()
-          const dateB = new Date(b.created_at || 0).getTime()
-          return dateB - dateA // DESC (newest first)
-        })
-        
-        // Generate rentalCode for each rental if not already present
-        const rentalsWithCodes = sortedRentals.map((rental) => {
-          if (!rental.rentalCode) {
-            const code = generateRentalCodeFromUUID(
-              rental.customerName,
-              rental.licensePlate,
-              rental.startDate,
-              rental.id
-            )
-            return { ...rental, rentalCode: code }
-          }
-          return rental
-        })
-        
-        setOrders(rentalsWithCodes)
-      } catch (error) {
-        console.error('Error loading data:', error)
-      } finally {
-        setLoading(false)
-      }
+  const loadData = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true)
+      const [vehiclesData, customersData, rentalsData] = await Promise.all([
+        fetchVehicles(),
+        fetchCustomers(),
+        fetchRentals(),
+      ])
+      setVehicles(vehiclesData || [])
+      setCustomers(customersData || [])
+      
+      // Sort rentals by created_at descending (newest first) - client-side backup
+      const sortedRentals = (rentalsData || []).sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime()
+        const dateB = new Date(b.created_at || 0).getTime()
+        return dateB - dateA // DESC (newest first)
+      })
+      
+      // Generate rentalCode for each rental if not already present
+      const rentalsWithCodes = sortedRentals.map((rental) => {
+        if (!rental.rentalCode) {
+          const code = generateRentalCodeFromUUID(
+            rental.customerName,
+            rental.licensePlate,
+            rental.startDate,
+            rental.id
+          )
+          return { ...rental, rentalCode: code }
+        }
+        return rental
+      })
+      
+      setOrders(rentalsWithCodes)
+    } catch (error) {
+      console.error('Error loading data:', error)
+    } finally {
+      if (showLoading) setLoading(false)
     }
-    loadData()
   }, [])
+
+  useEffect(() => {
+    loadData(true)
+
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel("orders-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rentals" }, () => {
+        loadData(false)
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "vehicles" }, () => {
+        loadData(false)
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, () => {
+        loadData(false)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadData])
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =

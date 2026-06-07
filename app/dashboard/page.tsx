@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Car, Users, ClipboardList, TrendingUp, Wallet, Eye } from "lucide-react"
-import { fetchVehicles, fetchRentals, fetchTransactions } from "@/lib/supabase"
+import { fetchVehicles, fetchRentals, fetchTransactions, supabase } from "@/lib/supabase"
 
 interface DashboardStats {
   totalVehicles: number
@@ -57,80 +57,99 @@ export default function DashboardPage() {
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false)
   const [isVehicleDialogOpen, setIsVehicleDialogOpen] = useState(false)
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const vehicles = await fetchVehicles()
-        const rentals = await fetchRentals()
-        const transactions = await fetchTransactions()
+  const loadDashboardData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
+    try {
+      const vehicles = await fetchVehicles()
+      const rentals = await fetchRentals()
+      const transactions = await fetchTransactions()
 
-        // Calculate stats
-        const completedRentals = rentals.filter((r: any) => r.status === 'completed')
-        
-        // Rental revenue (from completed rentals, includes extraFees via revenue field)
-        const rentalRevenue = completedRentals.reduce((sum: number, r: any) => sum + (r.revenue || r.totalPrice || 0), 0)
-        
-        // Transaction totals
-        const totalIncome = transactions
-          .filter((tx: any) => tx.type === 'income')
-          .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
-        
-        const totalExpense = transactions
-          .filter((tx: any) => tx.type === 'expense')
-          .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
-        
-        // NEW LOGIC:
-        // Doanh thu = Rental revenue + Income from transactions
-        const totalRevenue = rentalRevenue + totalIncome
-        
-        // Lợi nhuận = Rental revenue ONLY (not counting transactions)
-        const totalProfit = rentalRevenue
+      // Calculate stats
+      const completedRentals = rentals.filter((r: any) => r.status === 'completed')
+      
+      // Rental revenue (from completed rentals, includes extraFees via revenue field)
+      const rentalRevenue = completedRentals.reduce((sum: number, r: any) => sum + (r.revenue || r.totalPrice || 0), 0)
+      
+      // Transaction totals
+      const totalIncome = transactions
+        .filter((tx: any) => tx.type === 'income')
+        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
+      
+      const totalExpense = transactions
+        .filter((tx: any) => tx.type === 'expense')
+        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
+      
+      // NEW LOGIC:
+      // Doanh thu = Rental revenue + Income from transactions
+      const totalRevenue = rentalRevenue + totalIncome
+      
+      // Lợi nhuận = Rental revenue ONLY (not counting transactions)
+      const totalProfit = rentalRevenue
 
-        setStats({
-          totalVehicles: vehicles.length,
-          totalRevenue,
-          totalProfit,
-          totalRentals: rentals.length,
-        })
+      setStats({
+        totalVehicles: vehicles.length,
+        totalRevenue,
+        totalProfit,
+        totalRentals: rentals.length,
+      })
 
-        // Map recent rentals for display
-        const recent = rentals.slice(0, 5).map((r: any) => ({
-          id: r.id,
-          customer: r.customerName,
-          vehicle: r.vehicleName,
-          price: `${(r.pricePerDay / 1000).toFixed(0)}K`,
-          unit: r.totalDays,
-        }))
-        setRecentOrders(recent)
+      // Map recent rentals for display
+      const recent = rentals.slice(0, 5).map((r: any) => ({
+        id: r.id,
+        customer: r.customerName,
+        vehicle: r.vehicleName,
+        price: `${(r.pricePerDay / 1000).toFixed(0)}K`,
+        unit: r.totalDays,
+      }))
+      setRecentOrders(recent)
 
-        // Sort vehicles by rental count for top vehicles
-        const vehiclesWithRentals = vehicles.map((v: any) => {
-          // Calculate vehicle profit = revenue from rentals - purchase price
-          const vehicleRentals = rentals.filter((r: any) => r.vehicleId === v.id && r.status === 'completed')
-          const vehicleRevenue = vehicleRentals.reduce((sum: number, r: any) => sum + (r.revenue || r.totalPrice || 0), 0)
-          const vehicleProfit = vehicleRevenue - (v.purchasePrice || 0)
-          
-          return {
-            id: v.id,
-            name: v.name,
-            licensePlate: v.licensePlate,
-            rentals: vehicleRentals.length,
-            revenue: `${vehicleRevenue.toLocaleString("vi-VN")} VNĐ`,
-            profit: `${vehicleProfit.toLocaleString("vi-VN")} VNĐ`,
-            image: v.vehicleImages || [],
-          }
-        }).sort((a, b) => b.rentals - a.rentals).slice(0, 4)
+      // Sort vehicles by rental count for top vehicles
+      const vehiclesWithRentals = vehicles.map((v: any) => {
+        // Calculate vehicle profit = revenue from rentals - purchase price
+        const vehicleRentals = rentals.filter((r: any) => r.vehicleId === v.id && r.status === 'completed')
+        const vehicleRevenue = vehicleRentals.reduce((sum: number, r: any) => sum + (r.revenue || r.totalPrice || 0), 0)
+        const vehicleProfit = vehicleRevenue - (v.purchasePrice || 0)
+        
+        return {
+          id: v.id,
+          name: v.name,
+          licensePlate: v.licensePlate,
+          rentals: vehicleRentals.length,
+          revenue: `${vehicleRevenue.toLocaleString("vi-VN")} VNĐ`,
+          profit: `${vehicleProfit.toLocaleString("vi-VN")} VNĐ`,
+          image: v.vehicleImages || [],
+        }
+      }).sort((a, b) => b.rentals - a.rentals).slice(0, 4)
 
-        setTopVehicles(vehiclesWithRentals)
-      } catch (error) {
-        console.error("Failed to load dashboard data:", error)
-      } finally {
-        setLoading(false)
-      }
+      setTopVehicles(vehiclesWithRentals)
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error)
+    } finally {
+      if (showLoading) setLoading(false)
     }
-
-    loadDashboardData()
   }, [])
+
+  useEffect(() => {
+    loadDashboardData(true)
+
+    // Subscribe to real-time events for rentals, vehicles, transactions
+    const dashboardChannel = supabase
+      .channel('dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rentals' }, () => {
+        loadDashboardData(false)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
+        loadDashboardData(false)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+        loadDashboardData(false)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(dashboardChannel)
+    }
+  }, [loadDashboardData])
 
   const formatPrice = (value: number) => {
     return new Intl.NumberFormat("vi-VN", {

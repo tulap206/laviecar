@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -63,14 +63,9 @@ export default function AccessHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 15
 
-  // Load logs from Supabase
-  useEffect(() => {
-    loadAccessLogs()
-  }, [])
-
-  const loadAccessLogs = async () => {
+  const loadAccessLogs = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       console.log("📋 Loading access logs from Supabase...")
 
       const { data, error } = await supabase
@@ -89,9 +84,26 @@ export default function AccessHistoryPage() {
       console.error("Failed to load access logs:", error)
       setAccessLogs([])
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
-  }
+  }, [])
+
+  // Load logs from Supabase
+  useEffect(() => {
+    loadAccessLogs(true)
+
+    // Subscribe to real-time events for access_logs
+    const channel = supabase
+      .channel('access-logs-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'access_logs' }, () => {
+        loadAccessLogs(false)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadAccessLogs])
 
   // Get unique values for filters
   const accounts = Array.from(new Set(accessLogs.map(log => log.username)))

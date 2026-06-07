@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase, fetchTransactions, insertTransaction, deleteTransaction, updateTransaction, Transaction } from "@/lib/supabase"
@@ -82,22 +82,199 @@ export default function ReportsPage() {
     amount: "",
   })
 
-  useEffect(() => {
-    loadReportData()
-    loadTransactions()
+  const loadReportData = useCallback(async (showLoading = true, logAccess = true) => {
+    try {
+      if (showLoading) setLoading(true)
+      console.log("📊 Loading report data...")
+
+      // Fetch from Supabase
+      const [customersRes, vehiclesRes, rentalsRes, transactionsRes] = await Promise.all([
+        supabase.from("customers").select("*"),
+        supabase.from("vehicles").select("*"),
+        supabase.from("rentals").select("*"),
+        fetchTransactions()
+      ])
+
+      const customers = customersRes.data || []
+      const vehicles = vehiclesRes.data || []
+      const rentals = rentalsRes.data || []
+      const txData = transactionsRes || []
+
+      // Update transactions state too
+      setTransactions(txData)
+
+      console.log("📊 Fetched data:", {
+        customers: customers.length,
+        vehicles: vehicles.length,
+        rentals: rentals.length,
+        transactions: txData.length,
+      })
+
+      // Calculate statistics
+      const totalCustomers = customers.length || 0
+      const totalVehicles = vehicles.length || 0
+      const totalRentals = rentals.length || 0
+
+      // Rental revenue (totalPrice field)
+      const rentalRevenue = rentals.reduce((sum: number, r: any) => sum + (r.totalPrice || 0), 0)
+      
+      // Transaction totals
+      const totalIncomeFromTransactions = txData
+        .filter((tx: any) => tx.type === 'income')
+        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
+      
+      const totalExpenseFromTransactions = txData
+        .filter((tx: any) => tx.type === 'expense')
+        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
+      
+      // NEW LOGIC:
+      // Doanh thu = Rental revenue + Income from transactions
+      const totalRevenue = rentalRevenue + totalIncomeFromTransactions
+      
+      // Lợi nhuận = Rental revenue only (not counting transactions)
+      const totalProfit = rentalRevenue
+      
+      // Active rentals = pending status
+      const activeRentals = rentals.filter((r: any) => r.status === "pending").length
+      
+      // Vehicles in maintenance
+      const vehiclesInMaintenance = vehicles.filter((v: any) => v.status === "maintenance").length
+
+      console.log("💰 Calculations:", { 
+        rentalRevenue, 
+        totalIncomeFromTransactions,
+        totalExpenseFromTransactions,
+        totalRevenue, 
+        totalProfit, 
+        activeRentals, 
+        totalCustomers, 
+        totalVehicles, 
+        totalRentals 
+      })
+
+      // Monthly data
+      const monthlyData: Record<string, number> = {}
+      
+      // Helper to parse DD/MM/YYYY format
+      const parseVietnamDate = (dateStr: string): Date => {
+        if (!dateStr) return new Date(0)
+        const parts = dateStr.split("/")
+        if (parts.length === 3) {
+          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]))
+        }
+        return new Date(dateStr)
+      }
+      
+      rentals.forEach((rental: any) => {
+        if (rental.startDate) {
+          const date = parseVietnamDate(rental.startDate)
+          const monthKey = `T${date.getMonth() + 1}`
+          // Use revenue (includes extraFees) instead of totalPrice
+          monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (rental.revenue || rental.totalPrice || 0)
+        }
+      })
+
+      const monthlyRevenue = [
+        { month: "T1", revenue: monthlyData["T1"] || 0 },
+        { month: "T2", revenue: monthlyData["T2"] || 0 },
+        { month: "T3", revenue: monthlyData["T3"] || 0 },
+        { month: "T4", revenue: monthlyData["T4"] || 0 },
+        { month: "T5", revenue: monthlyData["T5"] || 0 },
+        { month: "T6", revenue: monthlyData["T6"] || 0 },
+        { month: "T7", revenue: monthlyData["T7"] || 0 },
+        { month: "T8", revenue: monthlyData["T8"] || 0 },
+        { month: "T9", revenue: monthlyData["T9"] || 0 },
+        { month: "T10", revenue: monthlyData["T10"] || 0 },
+        { month: "T11", revenue: monthlyData["T11"] || 0 },
+        { month: "T12", revenue: monthlyData["T12"] || 0 },
+      ]
+
+      // Top vehicles - calculate from rentals
+      const vehiclesWithStats = vehicles.map((v: any) => {
+        const vehicleRentals = rentals.filter((r: any) => r.vehicleId === v.id && r.status === 'completed')
+        const revenue = vehicleRentals.reduce((sum: number, r: any) => sum + (r.revenue || r.totalPrice || 0), 0)
+        return {
+          name: v.name,
+          rentals: vehicleRentals.length,
+          revenue: revenue,
+        }
+      })
+
+      const topVehicles = vehiclesWithStats
+        .filter((v: any) => v.revenue > 0) // Only show vehicles with revenue
+        .sort((a: any, b: any) => b.revenue - a.revenue)
+        .slice(0, 5)
+
+      console.log("📈 Report ready:", { totalCustomers, totalVehicles, totalRevenue })
+
+      const finalData: ReportData = {
+        totalCustomers,
+        totalVehicles,
+        totalRentals,
+        totalRevenue,
+        totalProfit,
+        activeRentals,
+        vehiclesInMaintenance,
+        monthlyRevenue,
+        topVehicles,
+      }
+
+      setReportData(finalData)
+      if (logAccess) addAccessLog("Xem", "Báo cáo", "Xem báo cáo tổng quan")
+    } catch (error) {
+      console.error("Failed to load report data:", error)
+      // Set default empty data
+      setReportData({
+        totalCustomers: 0,
+        totalVehicles: 0,
+        totalRentals: 0,
+        totalRevenue: 0,
+        totalProfit: 0,
+        activeRentals: 0,
+        vehiclesInMaintenance: 0,
+        monthlyRevenue: [
+          { month: "T1", revenue: 0 },
+          { month: "T2", revenue: 0 },
+          { month: "T3", revenue: 0 },
+          { month: "T4", revenue: 0 },
+          { month: "T5", revenue: 0 },
+          { month: "T6", revenue: 0 },
+        ],
+        topVehicles: [],
+      })
+    } finally {
+      if (showLoading) setLoading(false)
+    }
   }, [])
 
-  const loadTransactions = async () => {
-    try {
-      const data = await fetchTransactions()
-      setTransactions(data)
-      setCurrentPage(1) // Reset to first page when loading
-      console.log("✅ Loaded transactions from Supabase:", data.length)
-    } catch (error) {
-      console.error("Failed to fetch transactions:", error)
-      setTransactions([])
+  const loadTransactions = useCallback(async (showLoading = true) => {
+    await loadReportData(showLoading, false)
+  }, [loadReportData])
+
+  useEffect(() => {
+    loadReportData(true, true)
+
+    // Subscribe to real-time events for rentals, vehicles, customers, transactions
+    const channel = supabase
+      .channel('reports-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rentals' }, () => {
+        loadReportData(false, false)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, () => {
+        loadReportData(false, false)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => {
+        loadReportData(false, false)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+        loadReportData(false, false)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
-  }
+  }, [loadReportData])
 
   // Pagination calculations with search filter
   const filteredTransactions = transactions.filter((tx) => {
@@ -251,175 +428,6 @@ export default function ReportsPage() {
     }
   }
 
-  const loadReportData = async () => {
-    try {
-      setLoading(true)
-      console.log("📊 Loading report data...")
-
-      // Fetch from Supabase
-      const { data: customersData, error: customersError } = await supabase
-        .from("customers")
-        .select("*")
-      
-      const { data: vehiclesData, error: vehiclesError } = await supabase
-        .from("vehicles")
-        .select("*")
-      
-      const { data: rentalsData, error: rentalsError } = await supabase
-        .from("rentals")
-        .select("*")
-
-      // Handle errors
-      if (customersError) console.error("Customers error:", customersError)
-      if (vehiclesError) console.error("Vehicles error:", vehiclesError)
-      if (rentalsError) console.error("Rentals error:", rentalsError)
-
-      const customers = customersData || []
-      const vehicles = vehiclesData || []
-      const rentals = rentalsData || []
-
-      console.log("📊 Fetched data:", {
-        customers: customers.length,
-        vehicles: vehicles.length,
-        rentals: rentals.length,
-      })
-
-      // Calculate statistics
-      const totalCustomers = customers.length || 0
-      const totalVehicles = vehicles.length || 0
-      const totalRentals = rentals.length || 0
-
-      // Rental revenue (totalPrice field)
-      const rentalRevenue = rentals.reduce((sum: number, r: any) => sum + (r.totalPrice || 0), 0)
-      
-      // Transaction totals
-      const totalIncomeFromTransactions = transactions
-        .filter((tx: any) => tx.type === 'income')
-        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
-      
-      const totalExpenseFromTransactions = transactions
-        .filter((tx: any) => tx.type === 'expense')
-        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
-      
-      // NEW LOGIC:
-      // Doanh thu = Rental revenue + Income from transactions
-      const totalRevenue = rentalRevenue + totalIncomeFromTransactions
-      
-      // Lợi nhuận = Rental revenue only (not counting transactions)
-      const totalProfit = rentalRevenue
-      
-      // Active rentals = pending status
-      const activeRentals = rentals.filter((r: any) => r.status === "pending").length
-      
-      // Vehicles in maintenance
-      const vehiclesInMaintenance = vehicles.filter((v: any) => v.status === "maintenance").length
-
-      console.log("💰 Calculations:", { 
-        rentalRevenue, 
-        totalIncomeFromTransactions,
-        totalExpenseFromTransactions,
-        totalRevenue, 
-        totalProfit, 
-        activeRentals, 
-        totalCustomers, 
-        totalVehicles, 
-        totalRentals 
-      })
-
-      // Monthly data
-      const monthlyData: Record<string, number> = {}
-      
-      // Helper to parse DD/MM/YYYY format
-      const parseVietnamDate = (dateStr: string): Date => {
-        if (!dateStr) return new Date(0)
-        const parts = dateStr.split("/")
-        if (parts.length === 3) {
-          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]))
-        }
-        return new Date(dateStr)
-      }
-      
-      rentals.forEach((rental: any) => {
-        if (rental.startDate) {
-          const date = parseVietnamDate(rental.startDate)
-          const monthKey = `T${date.getMonth() + 1}`
-          // Use revenue (includes extraFees) instead of totalPrice
-          monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (rental.revenue || rental.totalPrice || 0)
-        }
-      })
-
-      const monthlyRevenue = [
-        { month: "T1", revenue: monthlyData["T1"] || 0 },
-        { month: "T2", revenue: monthlyData["T2"] || 0 },
-        { month: "T3", revenue: monthlyData["T3"] || 0 },
-        { month: "T4", revenue: monthlyData["T4"] || 0 },
-        { month: "T5", revenue: monthlyData["T5"] || 0 },
-        { month: "T6", revenue: monthlyData["T6"] || 0 },
-        { month: "T7", revenue: monthlyData["T7"] || 0 },
-        { month: "T8", revenue: monthlyData["T8"] || 0 },
-        { month: "T9", revenue: monthlyData["T9"] || 0 },
-        { month: "T10", revenue: monthlyData["T10"] || 0 },
-        { month: "T11", revenue: monthlyData["T11"] || 0 },
-        { month: "T12", revenue: monthlyData["T12"] || 0 },
-      ]
-
-      // Top vehicles - calculate from rentals
-      const vehiclesWithStats = vehicles.map((v: any) => {
-        const vehicleRentals = rentals.filter((r: any) => r.vehicleId === v.id && r.status === 'completed')
-        const revenue = vehicleRentals.reduce((sum: number, r: any) => sum + (r.revenue || r.totalPrice || 0), 0)
-        return {
-          name: v.name,
-          rentals: vehicleRentals.length,
-          revenue: revenue,
-        }
-      })
-
-      const topVehicles = vehiclesWithStats
-        .filter((v: any) => v.revenue > 0) // Only show vehicles with revenue
-        .sort((a: any, b: any) => b.revenue - a.revenue)
-        .slice(0, 5)
-
-      console.log("📈 Report ready:", { totalCustomers, totalVehicles, totalRevenue })
-
-      const finalData: ReportData = {
-        totalCustomers,
-        totalVehicles,
-        totalRentals,
-        totalRevenue,
-        totalProfit,
-        activeRentals,
-        vehiclesInMaintenance,
-        monthlyRevenue,
-        topVehicles,
-      }
-
-      setReportData(finalData)
-      addAccessLog("Xem", "Báo cáo", "Xem báo cáo tổng quan")
-    } catch (error) {
-      console.error("Failed to load report data:", error)
-      // Set default empty data
-      setReportData({
-        totalCustomers: 0,
-        totalVehicles: 0,
-        totalRentals: 0,
-        totalRevenue: 0,
-        totalProfit: 0,
-        activeRentals: 0,
-        vehiclesInMaintenance: 0,
-        monthlyRevenue: [
-          { month: "T1", revenue: 0 },
-          { month: "T2", revenue: 0 },
-          { month: "T3", revenue: 0 },
-          { month: "T4", revenue: 0 },
-          { month: "T5", revenue: 0 },
-          { month: "T6", revenue: 0 },
-        ],
-        topVehicles: [],
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (loading) {
     return (
