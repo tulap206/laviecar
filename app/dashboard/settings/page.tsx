@@ -370,18 +370,24 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             {/* Backup Button */}
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 md:p-6 text-center">
-              <Download className="w-6 md:w-8 h-6 md:h-8 text-blue-500 mx-auto mb-2" />
+              <Download className="w-6 md:w-8 h-6 md:h-8 text-red-600 mx-auto mb-2" />
               <h3 className="font-semibold text-sm md:text-base text-gray-900 mb-1 md:mb-2">Sao lưu dữ liệu</h3>
               <p className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">
                 Xuất tất cả khách hàng, xe, và đơn thuê
               </p>
-              <Button
-                onClick={handleBackup}
-                disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600 text-white w-full text-sm"
-              >
-                {loading ? "Đang xử lý..." : "📥 Sao lưu ngay"}
-              </Button>
+              {user?.permissions.canBackup ? (
+                <Button
+                  onClick={handleBackup}
+                  disabled={loading}
+                  className="bg-red-600 hover:bg-red-700 text-white w-full text-sm"
+                >
+                  {loading ? "Đang xử lý..." : "📥 Sao lưu ngay"}
+                </Button>
+              ) : (
+                <Button disabled className="bg-gray-300 text-gray-600 w-full cursor-not-allowed text-sm">
+                  🔒 Không có quyền
+                </Button>
+              )}
             </div>
 
             {/* Restore Button */}
@@ -454,7 +460,7 @@ export default function SettingsPage() {
           ) : (
             <div className="space-y-2 md:space-y-3 max-h-[70vh] overflow-y-auto">
               {backupFiles.map((file) => (
-                <div key={file.name} className="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-100 hover:border-blue-200 transition-all">
+                <div key={file.name} className="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-100 hover:border-red-100 transition-all">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm text-gray-900 break-words">{file.name}</p>
@@ -469,20 +475,22 @@ export default function SettingsPage() {
                       variant="default"
                       onClick={() => handleRestoreFromFile(file.url, file.name)}
                       disabled={loading || user?.role !== 'admin'}
-                      className={`flex-1 text-xs ${user?.role !== 'admin' ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
+                      className={`flex-1 text-xs ${user?.role !== 'admin' ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-600'}`}
                       title={user?.role !== 'admin' ? 'Chỉ Admin có quyền khôi phục' : ''}
                     >
                       {user?.role !== 'admin' ? '🔒 Chỉ Admin' : 'Khôi phục'}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeleteBackup(file.name)}
-                      disabled={loading}
-                      className="text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                    {user?.permissions.canBackup && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteBackup(file.name)}
+                        disabled={loading}
+                        className="text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

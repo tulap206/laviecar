@@ -55,10 +55,10 @@ const ImageUploadButton = ({
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-400 hover:bg-blue-50 transition flex flex-col items-center justify-center gap-2 cursor-pointer"
+        className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-red-400 hover:bg-red-50 transition flex flex-col items-center justify-center gap-2 cursor-pointer"
       >
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <Upload className="w-6 h-6 text-blue-500" />
+        <div className="bg-red-50 p-3 rounded-lg">
+          <Upload className="w-6 h-6 text-red-600" />
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-gray-700">Thêm ảnh</p>
@@ -94,7 +94,7 @@ const ImageUploadButton = ({
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "renting":
-      return { className: "bg-blue-50 text-blue-600 border-blue-200", label: "Đang thuê" }
+      return { className: "bg-red-50 text-red-600 border-red-100", label: "Đang thuê" }
     case "pending":
       return { className: "bg-yellow-50 text-yellow-600 border-yellow-200", label: "Chờ giao xe" }
     case "inactive":
@@ -585,7 +585,7 @@ export default function CustomersPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+            <Button className="w-full sm:w-auto bg-red-500 text-white hover:bg-red-700 rounded-xl">
               <Plus className="w-4 h-4 mr-2" />
               Thêm khách hàng
             </Button>
@@ -694,7 +694,7 @@ export default function CustomersPage() {
                 <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }} className="rounded-xl">
                   Hủy
                 </Button>
-                <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+                <Button type="submit" className="bg-red-500 text-white hover:bg-red-700 rounded-xl">
                   {editingCustomer ? "Cập nhật" : "Thêm"}
                 </Button>
               </DialogFooter>
@@ -761,7 +761,7 @@ export default function CustomersPage() {
                               <Phone className="w-3 h-3 text-gray-400" />
                               {customer.phone}
                             </div>
-                            <a href={customer.facebook} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
+                            <a href={customer.facebook} target="_blank" rel="noopener noreferrer" className="text-xs text-red-600 hover:underline">
                               Facebook
                             </a>
                           </div>
@@ -786,9 +786,11 @@ export default function CustomersPage() {
                             <Button size="sm" variant="ghost" onClick={() => handleEdit(customer)} className="text-gray-600 hover:text-gray-900">
                               <Pencil className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDelete(customer.id)} className="text-red-600 hover:text-red-900">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {user?.permissions.canDelete && (
+                              <Button size="sm" variant="ghost" onClick={() => handleDelete(customer.id)} className="text-red-600 hover:text-red-900">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -809,8 +811,8 @@ export default function CustomersPage() {
                       {customer.customerphoto && customer.customerphoto.length > 0 ? (
                         <img src={customer.customerphoto[0]} alt={customer.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full bg-blue-100 flex items-center justify-center">
-                          <User className="w-6 h-6 text-blue-500" />
+                        <div className="w-full h-full bg-red-50 flex items-center justify-center">
+                          <User className="w-6 h-6 text-red-600" />
                         </div>
                       )}
                     </div>
@@ -856,7 +858,7 @@ export default function CustomersPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-blue-50"
+                        className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
                         onClick={() => { setViewingCustomer(customer); setIsDetailDialogOpen(true); }}
                       >
                         <Eye className="h-4 w-4" />
@@ -869,14 +871,16 @@ export default function CustomersPage() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                        onClick={() => handleDelete(customer.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {user?.permissions.canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                          onClick={() => handleDelete(customer.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -909,7 +913,7 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Facebook</p>
-                  <a href={viewingCustomer.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
+                  <a href={viewingCustomer.facebook} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline text-sm">
                     Xem profile
                   </a>
                 </div>
