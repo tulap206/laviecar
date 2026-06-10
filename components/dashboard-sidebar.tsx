@@ -152,18 +152,18 @@ export function DashboardSidebar({ children }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-20 bg-white border-r border-gray-100 transition-transform duration-300 flex flex-col shadow-sm",
+          "fixed left-0 top-0 z-50 h-screen w-20 bg-purple-950 border-r border-purple-900 transition-transform duration-300 flex flex-col shadow-lg shadow-purple-950/20",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-center h-24 border-b border-gray-100">
-          <div className="relative w-[68px] h-[68px]">
+        <div className="flex items-center justify-center h-24 border-b border-purple-900">
+          <div className="relative w-[68px] h-[68px] bg-purple-900 rounded-xl overflow-hidden flex items-center justify-center border border-purple-500 shadow-md">
             <Image
               src="/logo.jpg"
               alt="Lavie Car Rental Logo"
               fill
-              className="object-contain rounded-xl"
+              className="object-contain"
             />
           </div>
         </div>
@@ -180,8 +180,8 @@ export function DashboardSidebar({ children }: SidebarProps) {
                 className={cn(
                   "group flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 mx-auto",
                   isActive
-                    ? "sidebar-active"
-                    : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                    ? "bg-gradient-to-br from-amber-400 to-amber-500 text-purple-950 shadow-lg shadow-amber-400/20 font-bold"
+                    : "text-purple-300 hover:bg-purple-900/50 hover:text-white"
                 )}
                 title={item.title}
               >
@@ -192,15 +192,15 @@ export function DashboardSidebar({ children }: SidebarProps) {
         </nav>
 
         {/* Bottom section - compact spacing */}
-        <div className="p-2 space-y-1 border-t border-gray-100">
+        <div className="p-2 space-y-1 border-t border-purple-900">
           {/* User Avatar - Clickable */}
           {user && (
             <button
               onClick={() => setIsProfileOpen(true)}
-              className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-800 mx-auto cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200"
+              className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 text-purple-950 mx-auto cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 border border-amber-300/30"
               title={`${user.displayName} (${user.username})`}
             >
-              <span className="text-white text-sm font-semibold uppercase">
+              <span className="text-purple-950 text-sm font-bold uppercase">
                 {user.displayName.charAt(0)}
               </span>
             </button>
@@ -213,8 +213,8 @@ export function DashboardSidebar({ children }: SidebarProps) {
             className={cn(
               "group flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 mx-auto",
               pathname === "/dashboard/settings"
-                ? "bg-amber-50 text-amber-600 font-medium"
-                : "text-gray-400 hover:bg-amber-50 hover:text-amber-500"
+                ? "bg-gradient-to-br from-amber-400 to-amber-500 text-purple-950 font-bold"
+                : "text-purple-300 hover:bg-purple-900/50 hover:text-white"
             )}
             title="Cài đặt - Sao lưu & Khôi phục"
           >
@@ -224,7 +224,7 @@ export function DashboardSidebar({ children }: SidebarProps) {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center w-14 h-14 rounded-2xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all duration-200 mx-auto"
+            className="flex items-center justify-center w-14 h-14 rounded-2xl text-purple-300 hover:bg-red-950/50 hover:text-red-400 transition-all duration-200 mx-auto"
             title="Đăng xuất"
           >
             <LogOut className="w-5 h-5" />
