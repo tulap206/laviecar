@@ -33,7 +33,7 @@ interface UserAccount {
   id: string
   username: string
   displayName: string
-  role: "admin" | "mod" | "staff"
+  role: "admin" | "staff"
   permissions: {
     canDelete: boolean
   }
@@ -47,13 +47,6 @@ const DEFAULT_USERS: UserAccount[] = [
     displayName: "Admin",
     role: "admin",
     permissions: { canDelete: true },
-  },
-  {
-    id: "4",
-    username: "mod",
-    displayName: "Mod",
-    role: "mod",
-    permissions: { canDelete: false },
   },
   {
     id: "2",
@@ -80,7 +73,7 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     username: "",
     displayName: "",
-    role: "staff" as "admin" | "mod" | "staff",
+    role: "staff" as const,
     canDelete: false,
   })
   const [showAccessDenied, setShowAccessDenied] = useState(false)
@@ -147,7 +140,7 @@ export default function UsersPage() {
             ? {
                 ...u,
                 displayName: formData.displayName,
-                role: formData.role as "admin" | "mod" | "staff",
+                role: formData.role,
                 permissions: { canDelete: formData.canDelete },
               }
             : u
@@ -255,7 +248,7 @@ export default function UsersPage() {
           <DialogTrigger asChild>
             <Button
               onClick={() => resetForm()}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Plus className="w-4 h-4 mr-2" />
               Thêm Người Dùng
@@ -306,10 +299,9 @@ export default function UsersPage() {
                       role: e.target.value as "admin" | "staff",
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="admin">Admin (Quyền Đầy Đủ)</option>
-                  <option value="mod">Mod (Quản lý)</option>
                   <option value="staff">Staff (Quyền Hạn Chế)</option>
                 </select>
               </div>
@@ -333,7 +325,7 @@ export default function UsersPage() {
                 >
                   Hủy
                 </Button>
-                <Button type="submit" className="bg-red-600 hover:bg-red-700">
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
                   {editingUser ? "Cập Nhật" : "Tạo Tài Khoản"}
                 </Button>
               </DialogFooter>
@@ -372,7 +364,7 @@ export default function UsersPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {userAccount.role === "admin" ? (
-                          <Shield className="w-4 h-4 text-red-600" />
+                          <Shield className="w-4 h-4 text-blue-600" />
                         ) : (
                           <User className="w-4 h-4 text-gray-400" />
                         )}
@@ -386,13 +378,11 @@ export default function UsersPage() {
                       <span
                         className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
                           userAccount.role === "admin"
-                            ? "bg-red-50 text-red-800"
-                            : userAccount.role === "mod"
-                            ? "bg-orange-50 text-orange-800"
+                            ? "bg-blue-100 text-blue-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {userAccount.role === "admin" ? "Admin" : userAccount.role === "mod" ? "Mod" : "Staff"}
+                        {userAccount.role === "admin" ? "Admin" : "Staff"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -449,11 +439,11 @@ export default function UsersPage() {
       </Card>
 
       {/* Info Card */}
-      <Card className="bg-red-50 border-red-100">
+      <Card className="bg-blue-50 border-blue-200">
         <CardHeader>
-          <CardTitle className="text-red-900">Thông Tin Quan Trọng</CardTitle>
+          <CardTitle className="text-blue-900">Thông Tin Quan Trọng</CardTitle>
         </CardHeader>
-        <CardContent className="text-red-800 space-y-2">
+        <CardContent className="text-blue-800 space-y-2">
           <p>• Admin: Quyền đầy đủ truy cập toàn bộ hệ thống và quản lý người dùng</p>
           <p>• Staff: Quyền hạn chế, không thể xóa dữ liệu (tùy thuộc vào cài đặt)</p>
           <p>• Không thể xóa tài khoản admin duy nhất</p>

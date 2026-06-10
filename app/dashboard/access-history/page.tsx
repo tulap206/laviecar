@@ -40,12 +40,12 @@ const actionIconMap: Record<string, { icon: React.ElementType; color: string; bg
   "Thêm mới": { icon: Plus, color: "text-emerald-600", bgColor: "bg-emerald-50" },
   "Chỉnh sửa": { icon: Pencil, color: "text-amber-600", bgColor: "bg-amber-50" },
   "Xóa": { icon: Trash2, color: "text-red-600", bgColor: "bg-red-50" },
-  "Xem": { icon: Eye, color: "text-red-600", bgColor: "bg-red-50" },
+  "Xem": { icon: Eye, color: "text-blue-600", bgColor: "bg-blue-50" },
 }
 
 const moduleIconMap: Record<string, { icon: React.ElementType; color: string }> = {
   "Hệ thống": { icon: Settings, color: "text-gray-600" },
-  "Quản lý xe": { icon: Car, color: "text-red-600" },
+  "Quản lý xe": { icon: Car, color: "text-blue-600" },
   "Quản lý khách hàng": { icon: Users, color: "text-emerald-600" },
   "Đơn thuê": { icon: ClipboardList, color: "text-amber-600" },
   "Báo cáo": { icon: FileText, color: "text-violet-600" },

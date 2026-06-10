@@ -133,14 +133,14 @@ function LightboxModal({ imageSrc, onClose }: { imageSrc: string; onClose: () =>
 
 const statusMap = {
   pending: { label: "Chờ giao xe", className: "bg-amber-50 text-amber-600" },
-  active: { label: "Đang thuê", className: "bg-red-50 text-red-600" },
+  active: { label: "Đang thuê", className: "bg-blue-50 text-blue-600" },
   completed: { label: "Hoàn thành", className: "bg-emerald-50 text-emerald-600" },
   cancelled: { label: "Đã hủy", className: "bg-gray-100 text-gray-500" },
 }
 
 const vehicleStatusConfig = {
   available: { label: "Sẵn sàng", className: "bg-emerald-50 text-emerald-600" },
-  rented: { label: "Đang thuê", className: "bg-red-50 text-red-600" },
+  rented: { label: "Đang thuê", className: "bg-blue-50 text-blue-600" },
   maintenance: { label: "Bảo trì", className: "bg-amber-50 text-amber-600" },
 }
 
@@ -672,7 +672,7 @@ export default function OrdersPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-xl text-sm">
+            <Button className="w-full sm:w-auto bg-blue-500 text-white hover:bg-blue-600 rounded-xl text-sm">
               <Plus className="w-4 h-4 mr-2" />
               Tạo đơn thuê mới
             </Button>
@@ -766,7 +766,7 @@ export default function OrdersPage() {
                 <Button type="button" variant="outline" onClick={resetForm} className="rounded-xl border-gray-200">
                   Hủy
                 </Button>
-                <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 rounded-xl">
+                <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
                   Tạo đơn
                 </Button>
               </div>
@@ -814,7 +814,7 @@ export default function OrdersPage() {
           {filteredOrders.length > 0 ? (
             <div className="space-y-3 md:space-y-4 max-h-[70vh] overflow-y-auto">
               {filteredOrders.map((order) => (
-                <div key={order.id} className="bg-gray-50 p-3 md:p-4 rounded-xl border border-gray-100 hover:border-red-100 hover:shadow transition-all">
+                <div key={order.id} className="bg-gray-50 p-3 md:p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow transition-all">
                   {/* Top row: Code + Status */}
                   <div className="flex items-start justify-between mb-3 pb-3 border-b border-gray-200">
                     <div>
@@ -831,7 +831,7 @@ export default function OrdersPage() {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Khách hàng</p>
                       <button
-                        className="text-sm font-medium text-red-600 hover:text-red-800 hover:underline text-left break-words"
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline text-left break-words"
                         onClick={() => openCustomerDetail(order.customerId)}
                       >
                         {order.customerName}
@@ -840,7 +840,7 @@ export default function OrdersPage() {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Xe thuê</p>
                       <button
-                        className="text-sm font-medium text-red-600 hover:text-red-800 hover:underline text-left break-words"
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline text-left break-words"
                         onClick={() => openVehicleDetail(order.vehicleId)}
                       >
                         {order.vehicleName}
@@ -867,7 +867,7 @@ export default function OrdersPage() {
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Tổng tiền</p>
-                      <p className="text-sm font-semibold text-red-600">{order.totalPrice.toLocaleString("vi-VN")} VND</p>
+                      <p className="text-sm font-semibold text-blue-600">{order.totalPrice.toLocaleString("vi-VN")} VND</p>
                       <p className="text-xs text-gray-500">Cọc: {order.deposit.toLocaleString("vi-VN")}</p>
                     </div>
                     <div>
@@ -904,17 +904,15 @@ export default function OrdersPage() {
                       <Pencil className="w-3 h-3 mr-1" />
                       Sửa
                     </Button>
-                    {user?.permissions.canDelete && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="flex-1 text-xs md:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                        onClick={() => handleDeleteClick(order)}
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Xóa
-                      </Button>
-                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="flex-1 text-xs md:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      onClick={() => handleDeleteClick(order)}
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Xóa
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -932,7 +930,7 @@ export default function OrdersPage() {
         <DialogContent className="bg-white border-gray-200 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-gray-800 flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 text-red-600" />
+              <ClipboardList className="w-5 h-5 text-blue-500" />
               Chi tiết đơn thuê {viewingOrder?.id}
             </DialogTitle>
           </DialogHeader>
@@ -942,7 +940,7 @@ export default function OrdersPage() {
                 <div>
                   <p className="text-sm text-gray-500">Khách hàng</p>
                   <button 
-                    className="font-medium text-red-600 hover:underline"
+                    className="font-medium text-blue-600 hover:underline"
                     onClick={() => {
                       openCustomerDetail(viewingOrder.customerId)
                     }}
@@ -953,7 +951,7 @@ export default function OrdersPage() {
                 <div>
                   <p className="text-sm text-gray-500">Xe thuê</p>
                   <button 
-                    className="font-medium text-red-600 hover:underline"
+                    className="font-medium text-blue-600 hover:underline"
                     onClick={() => {
                       openVehicleDetail(viewingOrder.vehicleId)
                     }}
@@ -984,7 +982,7 @@ export default function OrdersPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Tổng tiền thuê</p>
-                  <p className="font-medium text-red-600 text-lg">{viewingOrder.totalPrice.toLocaleString("vi-VN")} VND</p>
+                  <p className="font-medium text-blue-600 text-lg">{viewingOrder.totalPrice.toLocaleString("vi-VN")} VND</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Phí phát sinh</p>
@@ -1042,32 +1040,10 @@ export default function OrdersPage() {
                   )}
                 </div>
               </div>
-
-              {/* VietQR Billing code */}
-              <div className="pt-4 border-t border-gray-100">
-                <div className="bg-slate-950 text-white p-4 rounded-xl flex flex-col items-center space-y-2">
-                  <div className="flex items-center justify-between w-full border-b border-slate-800 pb-2">
-                    <span className="text-xs bg-red-600 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Mã QR VietinBank</span>
-                    <span className="text-xs text-slate-400">Mr. Quý - 0762 75 3333</span>
-                  </div>
-                  
-                  <div className="w-40 h-40 bg-white p-1.5 rounded-lg overflow-hidden flex items-center justify-center my-1.5 shadow-md">
-                    <img 
-                      src={`https://img.vietqr.io/image/ICB-0762753333-qr_only.png?amount=${viewingOrder.totalPrice}&addInfo=${encodeURIComponent(`TT DON HONG ${viewingOrder.rentalCode || viewingOrder.id}`)}&accountName=NGUYEN%20HOANG%20QUY`}
-                      alt="VietQR"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <div className="text-[11px] text-slate-300 text-center space-y-0.5">
-                    <p className="font-bold text-red-500 text-sm">Số tiền: {viewingOrder.totalPrice.toLocaleString("vi-VN")} VND</p>
-                    <p className="text-slate-400">Dùng App Ngân hàng quét QR để thanh toán cọc hoặc tất toán đơn</p>
-                  </div>
-                </div>
-              </div>
               {viewingOrder.status === "pending" && (
                 <div className="flex gap-2 pt-4">
                   <Button
-                    className="flex-1 bg-red-600 text-white hover:bg-red-700 rounded-xl"
+                    className="flex-1 bg-blue-500 text-white hover:bg-blue-600 rounded-xl"
                     onClick={() => {
                       updateOrderStatus(viewingOrder.id, "active")
                       setViewingOrder(null)
@@ -1227,7 +1203,7 @@ export default function OrdersPage() {
               <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl border-gray-200">
                 Hủy
               </Button>
-              <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 rounded-xl">
+              <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
                 Lưu thay đổi
               </Button>
             </DialogFooter>
@@ -1242,7 +1218,7 @@ export default function OrdersPage() {
         <DialogContent className="bg-white border-gray-200 rounded-2xl max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-gray-800 flex items-center gap-2">
-              <User className="w-5 h-5 text-red-600" />
+              <User className="w-5 h-5 text-blue-500" />
               Chi tiết khách hàng
             </DialogTitle>
           </DialogHeader>
@@ -1267,12 +1243,12 @@ export default function OrdersPage() {
                 <div>
                   <p className="text-sm text-gray-500">Facebook</p>
                   <div className="flex items-center gap-2">
-                    <Facebook className="w-4 h-4 text-red-600" />
+                    <Facebook className="w-4 h-4 text-blue-500" />
                     <a 
                       href={viewingCustomer.facebook} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="font-medium text-red-600 hover:underline truncate"
+                      className="font-medium text-blue-600 hover:underline truncate"
                     >
                       {viewingCustomer.facebook.replace("https://facebook.com/", "")}
                     </a>
@@ -1408,7 +1384,7 @@ export default function OrdersPage() {
         <DialogContent className="bg-white border-gray-200 rounded-2xl max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-gray-800 flex items-center gap-2">
-              <Car className="w-5 h-5 text-red-600" />
+              <Car className="w-5 h-5 text-blue-500" />
               Chi tiết xe
             </DialogTitle>
           </DialogHeader>
@@ -1435,7 +1411,7 @@ export default function OrdersPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Giá thuê/ngày</p>
-                  <p className="font-medium text-red-600">{(viewingVehicle.pricePerDay ?? 0).toLocaleString("vi-VN")} VND</p>
+                  <p className="font-medium text-blue-600">{(viewingVehicle.pricePerDay ?? 0).toLocaleString("vi-VN")} VND</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Số KM hiện tại</p>

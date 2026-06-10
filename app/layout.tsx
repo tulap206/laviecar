@@ -11,17 +11,15 @@ import './globals.css'
 //});
 
 export const metadata: Metadata = {
-  title: 'QUÝ 79 - Cho Thuê - Mua Bán - Cầm Cố Xe Máy - Ô Tô Huế | quy79.com',
-  description: 'Cửa hàng 79 chuyên dịch vụ Cho thuê - Mua bán - Cầm cố xe máy và ô tô tự lái uy tín, nhanh chóng, giá tốt nhất tại Huế.',
+  title: 'Lavie Car Rental - Quản lý cho thuê xe ô tô tự lái',
+  description: 'Hệ thống quản lý cho thuê xe ô tô tự lái Lavie Car Rental',
   icons: {
     icon: [
-      { url: '/favicon.ico?v=5', sizes: 'any' },
-      { url: '/favicon-32.png?v=5', sizes: '32x32', type: 'image/png' },
-      { url: '/icon-192.png?v=5', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png?v=5', sizes: '512x512', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-light-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
     ],
-    apple: '/apple-icon.png?v=5',
-    shortcut: '/favicon.ico?v=5',
+    apple: '/apple-icon.png',
   },
 }
 

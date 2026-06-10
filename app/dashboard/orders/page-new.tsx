@@ -253,7 +253,7 @@ export default function OrdersPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-red-500 hover:bg-red-700 gap-2">
+            <Button className="bg-blue-500 hover:bg-blue-600 gap-2">
               <Plus className="w-4 h-4" />
               Thêm Đơn Thuê
             </Button>
@@ -301,7 +301,7 @@ export default function OrdersPage() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={resetForm}>Hủy</Button>
-                <Button type="submit" className="bg-red-500">Tạo Đơn</Button>
+                <Button type="submit" className="bg-blue-500">Tạo Đơn</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -343,7 +343,7 @@ export default function OrdersPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
                           <h3 className="font-semibold">{order.customerName} - {order.vehicleName}</h3>
-                          <Badge className={order.status === "pending" ? "bg-yellow-100 text-yellow-800" : order.status === "active" ? "bg-red-50 text-blue-800" : order.status === "completed" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                          <Badge className={order.status === "pending" ? "bg-yellow-100 text-yellow-800" : order.status === "active" ? "bg-blue-100 text-blue-800" : order.status === "completed" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                             {order.status === "pending" ? "Chờ Nhận" : order.status === "active" ? "Đang Thuê" : order.status === "completed" ? "Hoàn Thành" : "Đã Hủy"}
                           </Badge>
                         </div>
@@ -423,7 +423,7 @@ export default function OrdersPage() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Hủy</Button>
-                <Button type="submit" className="bg-red-500">Lưu</Button>
+                <Button type="submit" className="bg-blue-500">Lưu</Button>
               </DialogFooter>
             </form>
           )}

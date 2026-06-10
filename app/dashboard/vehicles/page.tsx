@@ -125,17 +125,16 @@ interface Vehicle {
   notes: string
   vehicleImages: string[]
   documentImages: string[]
-  category?: "car" | "bike"
 }
 
 const statusConfig: Record<VehicleStatus, { label: string; className: string }> = {
   available: { label: "Sẵn sàng", className: "bg-emerald-50 text-emerald-600" },
-  rented: { label: "Đang thuê", className: "bg-red-50 text-red-600" },
+  rented: { label: "Đang thuê", className: "bg-blue-50 text-blue-600" },
   maintenance: { label: "Bảo trì", className: "bg-amber-50 text-amber-600" },
 }
 
 const historyTypeConfig: Record<HistoryType, { label: string; className: string }> = {
-  rent: { label: "Cho thuê", className: "bg-red-50 text-red-600" },
+  rent: { label: "Cho thuê", className: "bg-blue-50 text-blue-600" },
   return: { label: "Nhận lại xe", className: "bg-emerald-50 text-emerald-600" },
   maintenance: { label: "Bảo trì", className: "bg-amber-50 text-amber-600" },
 }
@@ -164,7 +163,6 @@ export default function VehiclesPage() {
     purchasePrice: "",
     notes: "",
     status: "available" as VehicleStatus,
-    category: "bike" as "car" | "bike",
     vehicleImages: [] as File[],
     documentImages: [] as File[],
   })
@@ -301,7 +299,6 @@ export default function VehiclesPage() {
           purchasePrice: parseMoneyInput(newVehicle.purchasePrice),
           notes: newVehicle.notes,
           status: newVehicle.status,
-          category: newVehicle.category,
           vehicleImages: vehicleImageUrls,
           documentImages: documentImageUrls,
         }
@@ -325,7 +322,7 @@ export default function VehiclesPage() {
           })
           setVehicles(sorted)
           if (user) logger.addVehicle(user.username, user.displayName, insertedVehicle.name, insertedVehicle.licensePlate)
-          setNewVehicle({ name: "", licensePlate: "", color: "", pricePerDay: "", current_km: "", purchasePrice: "", notes: "", status: "available", category: "bike", vehicleImages: [], documentImages: [] })
+          setNewVehicle({ name: "", licensePlate: "", color: "", pricePerDay: "", current_km: "", purchasePrice: "", notes: "", status: "available", vehicleImages: [], documentImages: [] })
           setIsAddDialogOpen(false)
         } else {
           console.warn("⚠️ No data returned after vehicle insertion")
@@ -421,7 +418,6 @@ export default function VehiclesPage() {
           purchasePrice: parseMoneyInput(editingVehicle.purchasePrice?.toString() || '0'),
           notes: editingVehicle.notes,
           status: editingVehicle.status,
-          category: editingVehicle.category,
           vehicleImages: finalVehicleImages,
           documentImages: finalDocumentImages,
         }
@@ -580,7 +576,7 @@ export default function VehiclesPage() {
         }
       }}>
           <DialogTrigger asChild>
-            <Button className="bg-red-600 text-white hover:bg-red-700 rounded-xl">
+            <Button className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
               <Plus className="w-4 h-4 mr-2" />
               Thêm xe mới
             </Button>
@@ -666,38 +662,21 @@ export default function VehiclesPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="category" className="text-gray-600">Phân loại xe</Label>
-                  <Select
-                    value={newVehicle.category}
-                    onValueChange={(value: "car" | "bike") => setNewVehicle({ ...newVehicle, category: value })}
-                  >
-                    <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl">
-                      <SelectValue placeholder="Phân loại" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-200 rounded-xl">
-                      <SelectItem value="bike">Xe máy</SelectItem>
-                      <SelectItem value="car">Ô tô</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="status" className="text-gray-600">Trạng thái</Label>
-                  <Select
-                    value={newVehicle.status}
-                    onValueChange={(value: VehicleStatus) => setNewVehicle({ ...newVehicle, status: value })}
-                  >
-                    <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl">
-                      <SelectValue placeholder="Chọn trạng thái" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-200 rounded-xl">
-                      <SelectItem value="available">Sẵn sàng</SelectItem>
-                      <SelectItem value="rented">Đang thuê</SelectItem>
-                      <SelectItem value="maintenance">Bảo trì</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="status" className="text-gray-600">Trạng thái</Label>
+                <Select
+                  value={newVehicle.status}
+                  onValueChange={(value: VehicleStatus) => setNewVehicle({ ...newVehicle, status: value })}
+                >
+                  <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl">
+                    <SelectValue placeholder="Chọn trạng thái" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-200 rounded-xl">
+                    <SelectItem value="available">Sẵn sàng</SelectItem>
+                    <SelectItem value="rented">Đang thuê</SelectItem>
+                    <SelectItem value="maintenance">Bảo trì</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="notes" className="text-gray-600">Ghi chú</Label>
@@ -733,7 +712,7 @@ export default function VehiclesPage() {
                       </button>
                     </div>
                   ))}
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors">
+                  <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
                     <Upload className="w-6 h-6 text-gray-400" />
                     <span className="text-xs text-gray-400 mt-1">Thêm ảnh</span>
                     <input
@@ -770,7 +749,7 @@ export default function VehiclesPage() {
                       </button>
                     </div>
                   ))}
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors">
+                  <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
                     <Upload className="w-6 h-6 text-gray-400" />
                     <span className="text-xs text-gray-400 mt-1">Thêm ảnh</span>
                     <input
@@ -788,7 +767,7 @@ export default function VehiclesPage() {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl border-gray-200">
                 Hủy
               </Button>
-              <Button onClick={handleAddVehicle} className="bg-red-600 text-white hover:bg-red-700 rounded-xl">
+              <Button onClick={handleAddVehicle} className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
                 Thêm xe
               </Button>
             </DialogFooter>
@@ -868,7 +847,7 @@ export default function VehiclesPage() {
                           <div className="font-medium text-gray-800">{vehicle.name}</div>
                           <div className="text-sm text-gray-500 font-mono">{vehicle.licensePlate}</div>
                         </TableCell>
-                        <TableCell className="text-right text-red-600 font-medium">
+                        <TableCell className="text-right text-blue-600 font-medium">
                           {formatPrice(vehicle.pricePerDay)}
                         </TableCell>
                         <TableCell className="text-center">
@@ -903,7 +882,7 @@ export default function VehiclesPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                              className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-blue-50"
                               onClick={() => openEditDialog(vehicle)}
                             >
                               <Pencil className="h-4 w-4" />
@@ -957,8 +936,8 @@ export default function VehiclesPage() {
                     className="flex items-center gap-3 py-4 first:pt-0 last:pb-0"
                   >
                     {/* Vehicle Icon */}
-                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-                      <Car className="w-5 h-5 text-red-600" />
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                      <Car className="w-5 h-5 text-blue-500" />
                     </div>
                     
                     {/* Vehicle Info */}
@@ -977,7 +956,7 @@ export default function VehiclesPage() {
                       
                       {/* Price */}
                       <div className="mt-1">
-                        <span className="text-sm font-medium text-red-600">
+                        <span className="text-sm font-medium text-blue-600">
                           {formatPrice(vehicle.pricePerDay)}/ngày
                         </span>
                       </div>
@@ -1138,21 +1117,6 @@ export default function VehiclesPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-category" className="text-gray-600">Phân loại xe</Label>
-                  <Select
-                    value={editingVehicle.category || "bike"}
-                    onValueChange={(value: "car" | "bike") => setEditingVehicle({ ...editingVehicle, category: value })}
-                  >
-                    <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl">
-                      <SelectValue placeholder="Phân loại" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-200 rounded-xl">
-                      <SelectItem value="bike">Xe máy</SelectItem>
-                      <SelectItem value="car">Ô tô</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
                   <Label htmlFor="edit-status" className="text-gray-600">Trạng thái</Label>
                   <Select
                     value={editingVehicle.status}
@@ -1203,7 +1167,7 @@ export default function VehiclesPage() {
                       </button>
                     </div>
                   ))}
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors">
+                  <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
                     <Upload className="w-6 h-6 text-gray-400" />
                     <span className="text-xs text-gray-400 mt-1">Thêm ảnh</span>
                     <input
@@ -1241,7 +1205,7 @@ export default function VehiclesPage() {
                       </button>
                     </div>
                   ))}
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors">
+                  <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
                     <Upload className="w-6 h-6 text-gray-400" />
                     <span className="text-xs text-gray-400 mt-1">Thêm ảnh</span>
                     <input
@@ -1260,7 +1224,7 @@ export default function VehiclesPage() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl border-gray-200">
               Hủy
             </Button>
-            <Button onClick={handleEditVehicle} className="bg-red-600 text-white hover:bg-red-700 rounded-xl">
+            <Button onClick={handleEditVehicle} className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
               Lưu thay đổi
             </Button>
           </DialogFooter>
@@ -1276,7 +1240,7 @@ export default function VehiclesPage() {
         <DialogContent className="bg-white border-gray-200 rounded-2xl max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-gray-800 flex items-center gap-2">
-              <Eye className="w-5 h-5 text-red-600" />
+              <Eye className="w-5 h-5 text-blue-500" />
               Chi tiết xe
             </DialogTitle>
             <DialogDescription className="text-gray-500">Thông tin chi tiết của xe trong hệ thống</DialogDescription>
@@ -1304,7 +1268,7 @@ export default function VehiclesPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-gray-500">Giá thuê (theo ngày)</p>
-                  <p className="text-sm font-medium text-red-600">{formatPrice(viewingVehicle.pricePerDay)}</p>
+                  <p className="text-sm font-medium text-blue-600">{formatPrice(viewingVehicle.pricePerDay)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-gray-500">Số KM hiện tại</p>
@@ -1324,7 +1288,7 @@ export default function VehiclesPage() {
                 </div>
                 <div className="col-span-2 space-y-1">
                   <p className="text-xs text-gray-500">Lợi nhuận</p>
-                  <p className="text-sm font-medium text-red-600">{formatPrice(viewingVehicle.profit)}</p>
+                  <p className="text-sm font-medium text-blue-600">{formatPrice(viewingVehicle.profit)}</p>
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t border-gray-100">
@@ -1334,7 +1298,7 @@ export default function VehiclesPage() {
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Tỷ suất lợi nhuận trên vốn:</span>
-                  <span className="font-semibold text-red-600">
+                  <span className="font-semibold text-blue-600">
                     {viewingVehicle.purchasePrice > 0 ? ((viewingVehicle.profit / viewingVehicle.purchasePrice) * 100).toFixed(1) : 0}%
                   </span>
                 </div>
@@ -1402,7 +1366,7 @@ export default function VehiclesPage() {
                 setIsDetailDialogOpen(false)
                 if (viewingVehicle) openEditDialog(viewingVehicle)
               }} 
-              className="bg-red-600 text-white hover:bg-red-700 rounded-xl"
+              className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl"
             >
               <Pencil className="w-4 h-4 mr-2" />
               Chỉnh sửa
@@ -1477,7 +1441,7 @@ export default function VehiclesPage() {
       {/* Floating Action Button */}
       <button
         onClick={() => setIsAddDialogOpen(true)}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 hover:scale-110"
+        className="fixed bottom-8 right-8 w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 hover:scale-110"
         title="Thêm xe mới"
       >
         <Plus className="w-8 h-8" />

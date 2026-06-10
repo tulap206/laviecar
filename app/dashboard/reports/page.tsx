@@ -477,8 +477,8 @@ export default function ReportsPage() {
       value: reportData.totalVehicles.toString(),
       change: `${reportData.activeRentals} đang thuê`,
       icon: Car,
-      iconBg: "bg-red-50",
-      iconColor: "text-red-600",
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-500",
     },
     {
       title: "Tổng Khách",
@@ -486,7 +486,7 @@ export default function ReportsPage() {
       change: `${reportData.totalRentals} lượt thuê`,
       icon: Users,
       iconBg: "bg-purple-50",
-      iconColor: "text-amber-500",
+      iconColor: "text-purple-500",
     },
     {
       title: "Tổng Đơn",
@@ -542,7 +542,7 @@ export default function ReportsPage() {
       <Dialog open={isEditTransactionOpen} onOpenChange={setIsEditTransactionOpen}>
         <DialogContent className="bg-white border-gray-200 rounded-2xl max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-red-600">Sửa Khoản Thu/Chi</DialogTitle>
+            <DialogTitle className="text-blue-600">Sửa Khoản Thu/Chi</DialogTitle>
             <DialogDescription className="text-gray-500">Cập nhật thông tin khoản thu/chi</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleConfirmEdit() }} className="space-y-4">
@@ -580,7 +580,7 @@ export default function ReportsPage() {
                 className="border-gray-300 rounded-lg font-mono"
               />
             </div>
-            <Button type="submit" className="w-full bg-red-600 text-white hover:bg-red-700 rounded-lg">
+            <Button type="submit" className="w-full bg-blue-500 text-white hover:bg-blue-600 rounded-lg">
               Cập nhật
             </Button>
           </form>
@@ -670,7 +670,7 @@ export default function ReportsPage() {
                     <p className="text-xs text-gray-500">{vehicle.rentals} lần thuê</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-semibold text-sm text-red-600 break-words">
+                    <p className="font-semibold text-sm text-blue-600 break-words">
                       {vehicle.revenue.toLocaleString("vi-VN")}
                     </p>
                   </div>
@@ -744,7 +744,7 @@ export default function ReportsPage() {
               <CardDescription className="text-red-600 font-medium text-xs md:text-sm">Quản lý các khoản thu/chi nằm ngoài đơn thuê xe</CardDescription>
             </div>
             <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
-              <Button onClick={() => setIsAddTransactionOpen(true)} className="bg-red-600 text-white hover:bg-red-700 text-sm w-full sm:w-auto">
+              <Button onClick={() => setIsAddTransactionOpen(true)} className="bg-blue-500 text-white hover:bg-blue-600 text-sm w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Nhập Thu/Chi
               </Button>
@@ -788,7 +788,7 @@ export default function ReportsPage() {
                       className="border-gray-300 rounded-lg font-mono"
                     />
                   </div>
-                  <Button type="submit" className="w-full bg-red-600 text-white hover:bg-red-700 rounded-lg">
+                  <Button type="submit" className="w-full bg-blue-500 text-white hover:bg-blue-600 rounded-lg">
                     Thêm
                   </Button>
                 </form>
@@ -848,7 +848,7 @@ export default function ReportsPage() {
                             <div className="flex gap-1 md:gap-2 justify-center">
                               <button
                                 onClick={() => handleEditTransaction(tx)}
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition"
+                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded transition"
                                 title="Sửa"
                               >
                                 <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
@@ -927,7 +927,7 @@ export default function ReportsPage() {
         const cashOnHand = rentalRevenue + totalIncome - totalExpense
         
         return (
-          <Card className="bg-red-50 border-red-100">
+          <Card className="bg-blue-50 border-blue-200">
             <CardHeader className="pb-2 md:pb-4 p-3 md:p-4">
               <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <TrendingUp className="w-5 h-5" />
@@ -950,11 +950,11 @@ export default function ReportsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-1">💰 Doanh thu</p>
-                  <p className="font-semibold text-base md:text-lg text-red-600 break-words text-sm md:text-base">{reportData.totalRevenue.toLocaleString("vi-VN")}</p>
+                  <p className="font-semibold text-base md:text-lg text-blue-600 break-words text-sm md:text-base">{reportData.totalRevenue.toLocaleString("vi-VN")}</p>
                 </div>
               </div>
               
-              <div className="border-t border-red-100 pt-3">
+              <div className="border-t border-blue-200 pt-3">
                 <div className="grid grid-cols-2 gap-2 md:gap-3">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">📈 Lợi nhuận</p>
@@ -970,7 +970,7 @@ export default function ReportsPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">💵 Tiền hiện có</p>
-                    <p className={`font-semibold text-base md:text-lg ${cashOnHand >= 0 ? 'text-red-600' : 'text-red-600'} text-sm md:text-base break-words`}>
+                    <p className={`font-semibold text-base md:text-lg ${cashOnHand >= 0 ? 'text-blue-600' : 'text-red-600'} text-sm md:text-base break-words`}>
                       {cashOnHand.toLocaleString("vi-VN")}
                     </p>
                   </div>

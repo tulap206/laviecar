@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { logger } from "@/lib/logger"
 
-export type UserRole = "admin" | "mod" | "staff"
+export type UserRole = "admin" | "staff"
 
 export interface User {
   id: string
@@ -12,9 +12,6 @@ export interface User {
   role: UserRole
   permissions: {
     canDelete: boolean
-    canBackup: boolean
-    canViewAccessHistory: boolean
-    canManageUsers: boolean
   }
 }
 
@@ -53,25 +50,6 @@ export const USERS: { username: string; password: string; user: User }[] = [
       role: "admin",
       permissions: {
         canDelete: true,
-        canBackup: true,
-        canViewAccessHistory: true,
-        canManageUsers: true,
-      },
-    },
-  },
-  {
-    username: "mod",
-    password: "mod123",
-    user: {
-      id: "4",
-      username: "mod",
-      displayName: "Mod",
-      role: "mod",
-      permissions: {
-        canDelete: false,
-        canBackup: false,
-        canViewAccessHistory: false,
-        canManageUsers: false,
       },
     },
   },
@@ -85,9 +63,6 @@ export const USERS: { username: string; password: string; user: User }[] = [
       role: "staff",
       permissions: {
         canDelete: false,
-        canBackup: false,
-        canViewAccessHistory: false,
-        canManageUsers: false,
       },
     },
   },
@@ -101,9 +76,6 @@ export const USERS: { username: string; password: string; user: User }[] = [
       role: "staff",
       permissions: {
         canDelete: false,
-        canBackup: false,
-        canViewAccessHistory: false,
-        canManageUsers: false,
       },
     },
   },
@@ -223,9 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: data.role as UserRole,
           permissions: {
             canDelete: data.can_delete || false,
-            canBackup: data.can_backup ?? (data.role === "admin"),
-            canViewAccessHistory: data.can_view_access_history ?? (data.role === "admin"),
-            canManageUsers: data.can_manage_users ?? (data.role === "admin"),
           },
         }
         setUser(userData)
