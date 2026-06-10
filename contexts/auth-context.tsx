@@ -79,6 +79,19 @@ export const USERS: { username: string; password: string; user: User }[] = [
       },
     },
   },
+  {
+    username: "mod",
+    password: "Mod@123",
+    user: {
+      id: "4",
+      username: "mod",
+      displayName: "Mod",
+      role: "staff", // Staff/Mod role that restricts deletion and access-history/settings
+      permissions: {
+        canDelete: false,
+      },
+    },
+  },
 ]
 
 // Get client IP (simplified for demo)

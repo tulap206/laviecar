@@ -177,25 +177,32 @@ export function DashboardSidebar({ children }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 py-6 px-3 space-y-2">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "group flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 mx-auto",
-                  isActive
-                    ? "bg-gradient-to-br from-amber-400 to-amber-500 text-purple-950 shadow-lg shadow-amber-400/20 font-bold"
-                    : "text-purple-300 hover:bg-purple-900/50 hover:text-white"
-                )}
-                title={item.title}
-              >
-                <item.icon className="w-5 h-5" />
-              </Link>
-            )
-          })}
+          {menuItems
+            .filter((item) => {
+              if (item.href === "/dashboard/access-history" && user?.role !== "admin") {
+                return false
+              }
+              return true
+            })
+            .map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "group flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 mx-auto",
+                    isActive
+                      ? "bg-gradient-to-br from-amber-400 to-amber-500 text-purple-950 shadow-lg shadow-amber-400/20 font-bold"
+                      : "text-purple-300 hover:bg-purple-900/50 hover:text-white"
+                  )}
+                  title={item.title}
+                >
+                  <item.icon className="w-5 h-5" />
+                </Link>
+              )
+            })}
         </nav>
 
         {/* Bottom section - compact spacing */}
@@ -213,20 +220,22 @@ export function DashboardSidebar({ children }: SidebarProps) {
             </button>
           )}
           
-          {/* Settings Link */}
-          <Link
-            href="/dashboard/settings"
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              "group flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 mx-auto",
-              pathname === "/dashboard/settings"
-                ? "bg-gradient-to-br from-amber-400 to-amber-500 text-purple-950 font-bold"
-                : "text-purple-300 hover:bg-purple-900/50 hover:text-white"
-            )}
-            title="Cài đặt - Sao lưu & Khôi phục"
-          >
-            <Settings className="w-5 h-5" />
-          </Link>
+          {/* Settings Link - Only visible to Admins */}
+          {user?.role === "admin" && (
+            <Link
+              href="/dashboard/settings"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "group flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-200 mx-auto",
+                pathname === "/dashboard/settings"
+                  ? "bg-gradient-to-br from-amber-400 to-amber-500 text-purple-950 font-bold"
+                  : "text-purple-300 hover:bg-purple-900/50 hover:text-white"
+              )}
+              title="Cài đặt - Sao lưu & Khôi phục"
+            >
+              <Settings className="w-5 h-5" />
+            </Link>
+          )}
           
           {/* Logout Button */}
           <button
