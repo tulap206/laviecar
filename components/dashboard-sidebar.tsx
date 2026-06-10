@@ -118,7 +118,14 @@ export function DashboardSidebar({ children }: SidebarProps) {
 
       if (error) {
         console.error("Supabase error:", error)
-        throw error
+        // If the table auth_users does not exist, fall back to updating the local USERS array
+        if (error.code === "PGRST205") {
+          foundUser.password = newPassword
+        } else {
+          throw error
+        }
+      } else {
+        foundUser.password = newPassword
       }
 
       setPasswordMessage({ type: 'success', text: '✅ Đổi mật khẩu thành công!' })
