@@ -316,76 +316,78 @@ export default function LandingPage() {
                   <h2 className="text-2xl font-bold text-purple-950 font-serif text-center mb-6">
                     Đặt xe trực tuyến
                   </h2>
-                  <form onSubmit={handleSearch} className="space-y-4">
-                    <div className="space-y-1">
-                      <Label htmlFor="name" className="text-xs font-semibold text-slate-500 uppercase">Họ và tên *</Label>
-                      <div className="relative">
-                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
-                        <Input 
-                          id="name"
-                          type="text"
-                          required
-                          placeholder="Nguyễn Văn A"
-                          className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
-                          value={formData.name}
-                          onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor="phone" className="text-xs font-semibold text-slate-500 uppercase">Số điện thoại *</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
-                        <Input 
-                          id="phone"
-                          type="tel"
-                          required
-                          placeholder="0363 077 775"
-                          className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                  <form onSubmit={handleSearch} className="space-y-4 min-h-[380px] flex flex-col justify-between">
+                    <div className="space-y-4">
                       <div className="space-y-1">
-                        <Label htmlFor="startDate" className="text-xs font-semibold text-slate-500 uppercase">Ngày nhận *</Label>
-                        <Input 
-                          id="startDate"
-                          type="date"
-                          required
-                          className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl text-sm"
-                          value={formData.startDate}
-                          onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                        />
+                        <Label htmlFor="name" className="text-xs font-semibold text-slate-500 uppercase">Họ và tên *</Label>
+                        <div className="relative">
+                          <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
+                          <Input 
+                            id="name"
+                            type="text"
+                            required
+                            placeholder="Nguyễn Văn A"
+                            className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
+                            value={formData.name}
+                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="endDate" className="text-xs font-semibold text-slate-500 uppercase">Ngày trả *</Label>
-                        <Input 
-                          id="endDate"
-                          type="date"
-                          required
-                          className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl text-sm"
-                          value={formData.endDate}
-                          onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                        />
-                      </div>
-                    </div>
 
-                    <div className="space-y-1">
-                      <Label htmlFor="address" className="text-xs font-semibold text-slate-500 uppercase">Địa chỉ (tại Huế hoặc nơi ở)</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
-                        <Input 
-                          id="address"
-                          type="text"
-                          placeholder="Khách sạn Hương Giang, Lê Lợi, Huế"
-                          className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
-                          value={formData.address}
-                          onChange={(e) => setFormData({...formData, address: e.target.value})}
-                        />
+                      <div className="space-y-1">
+                        <Label htmlFor="phone" className="text-xs font-semibold text-slate-500 uppercase">Số điện thoại *</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
+                          <Input 
+                            id="phone"
+                            type="tel"
+                            required
+                            placeholder="0363 077 775"
+                            className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <Label htmlFor="startDate" className="text-xs font-semibold text-slate-500 uppercase">Ngày nhận *</Label>
+                          <Input 
+                            id="startDate"
+                            type="date"
+                            required
+                            className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl text-sm"
+                            value={formData.startDate}
+                            onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="endDate" className="text-xs font-semibold text-slate-500 uppercase">Ngày trả *</Label>
+                          <Input 
+                            id="endDate"
+                            type="date"
+                            required
+                            className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl text-sm"
+                            value={formData.endDate}
+                            onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="address" className="text-xs font-semibold text-slate-500 uppercase">Địa chỉ (tại Huế hoặc nơi ở)</Label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
+                          <Input 
+                            id="address"
+                            type="text"
+                            placeholder="Khách sạn Hương Giang, Lê Lợi, Huế"
+                            className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
+                            value={formData.address}
+                            onChange={(e) => setFormData({...formData, address: e.target.value})}
+                          />
+                        </div>
                       </div>
                     </div>
 
