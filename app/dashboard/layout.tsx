@@ -4,7 +4,6 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
-import { Loader2 } from "lucide-react"
 
 export default function DashboardLayout({
   children,
@@ -22,8 +21,9 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-bg">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="min-h-screen flex flex-col items-center justify-center gradient-bg gap-4">
+        <div className="w-10 h-10 rounded-full border-2 border-purple-200 border-t-purple-700 animate-spin" />
+        <p className="text-sm text-purple-400 font-medium">Đang tải dữ liệu...</p>
       </div>
     )
   }

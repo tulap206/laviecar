@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { 
-  Car, Calendar, User, Phone, MapPin, Facebook, 
+  Car, User, Phone, MapPin, Facebook, Bike,
   Shield, Clock, Star, CheckCircle, ArrowRight, 
-  Menu, X, HelpCircle, PhoneCall, Check, Loader2, MessageCircle 
+  X, PhoneCall, Check, Loader2, MessageCircle, ExternalLink 
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -18,10 +18,10 @@ export default function LandingPage() {
   const router = useRouter()
   
   // Form booking states
+  const [activeTab, setActiveTab] = useState<"car" | "moto">("car")
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    facebook: "",
     address: "",
     startDate: "",
     endDate: "",
@@ -128,7 +128,7 @@ export default function LandingPage() {
         const newCustomer = await insertCustomer({
           name: formData.name,
           phone: formData.phone,
-          facebook: formData.facebook || "",
+          facebook: "",
           address: formData.address || "",
           idcard: "",
           totalrentals: 0,
@@ -281,117 +281,175 @@ export default function LandingPage() {
           </div>
 
           {/* Booking Form (5 columns) */}
-          <div id="booking" className="lg:col-span-5 bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl border border-purple-100 hover:shadow-purple-900/10 transition-all duration-300">
-            <h2 className="text-2xl font-bold text-purple-950 font-serif text-center mb-6">
-              Đặt xe trực tuyến
-            </h2>
-            
-            <form onSubmit={handleSearch} className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="name" className="text-xs font-semibold text-slate-500 uppercase">Họ và tên *</Label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-purple-500/60" />
-                  <Input 
-                    id="name"
-                    type="text"
-                    required
-                    placeholder="Nguyễn Văn A"
-                    className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="phone" className="text-xs font-semibold text-slate-500 uppercase">Số điện thoại *</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-purple-500/60" />
-                  <Input 
-                    id="phone"
-                    type="tel"
-                    required
-                    placeholder="0363 077 775"
-                    className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="startDate" className="text-xs font-semibold text-slate-500 uppercase">Ngày nhận *</Label>
-                  <Input 
-                    id="startDate"
-                    type="date"
-                    required
-                    className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl text-sm"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="endDate" className="text-xs font-semibold text-slate-500 uppercase">Ngày trả *</Label>
-                  <Input 
-                    id="endDate"
-                    type="date"
-                    required
-                    className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl text-sm"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="facebook" className="text-xs font-semibold text-slate-500 uppercase">Link Facebook hoặc Zalo</Label>
-                <div className="relative">
-                  <Facebook className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-purple-500/60" />
-                  <Input 
-                    id="facebook"
-                    type="text"
-                    placeholder="facebook.com/nguyenvana"
-                    className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
-                    value={formData.facebook}
-                    onChange={(e) => setFormData({...formData, facebook: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="address" className="text-xs font-semibold text-slate-500 uppercase">Địa chỉ (tại Huế hoặc nơi ở)</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-purple-500/60" />
-                  <Input 
-                    id="address"
-                    type="text"
-                    placeholder="Khách sạn Hương Giang, Lê Lợi, Huế"
-                    className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12 bg-purple-900 hover:bg-purple-950 text-white rounded-xl shadow-lg shadow-purple-900/20 font-semibold transition-all mt-4 hover-lift"
+          <div id="booking" className="lg:col-span-5 bg-white text-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-purple-100 hover:shadow-purple-900/10 transition-all duration-300">
+            {/* Tab Switcher */}
+            <div className="flex border-b border-purple-100">
+              <button
+                type="button"
+                onClick={() => setActiveTab("car")}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
+                  activeTab === "car"
+                    ? "bg-purple-950 text-amber-300 shadow-inner"
+                    : "bg-white text-slate-500 hover:bg-purple-50 hover:text-purple-900"
+                }`}
               >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Đang tìm kiếm...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    Tìm Xe Trống & Báo Giá
-                    <ArrowRight className="w-4 h-4" />
-                  </span>
-                )}
-              </Button>
-            </form>
+                <Car className="w-4 h-4" />
+                Thuê Xe Ô Tô
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("moto")}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-all ${
+                  activeTab === "moto"
+                    ? "bg-purple-950 text-amber-300 shadow-inner"
+                    : "bg-white text-slate-500 hover:bg-purple-50 hover:text-purple-900"
+                }`}
+              >
+                <Bike className="w-4 h-4" />
+                Thuê Xe Máy
+              </button>
+            </div>
+
+            <div className="p-6 sm:p-8">
+              {activeTab === "car" ? (
+                <>
+                  <h2 className="text-2xl font-bold text-purple-950 font-serif text-center mb-6">
+                    Đặt xe trực tuyến
+                  </h2>
+                  <form onSubmit={handleSearch} className="space-y-4">
+                    <div className="space-y-1">
+                      <Label htmlFor="name" className="text-xs font-semibold text-slate-500 uppercase">Họ và tên *</Label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
+                        <Input 
+                          id="name"
+                          type="text"
+                          required
+                          placeholder="Nguyễn Văn A"
+                          className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
+                          value={formData.name}
+                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="phone" className="text-xs font-semibold text-slate-500 uppercase">Số điện thoại *</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
+                        <Input 
+                          id="phone"
+                          type="tel"
+                          required
+                          placeholder="0363 077 775"
+                          className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="startDate" className="text-xs font-semibold text-slate-500 uppercase">Ngày nhận *</Label>
+                        <Input 
+                          id="startDate"
+                          type="date"
+                          required
+                          className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl text-sm"
+                          value={formData.startDate}
+                          onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="endDate" className="text-xs font-semibold text-slate-500 uppercase">Ngày trả *</Label>
+                        <Input 
+                          id="endDate"
+                          type="date"
+                          required
+                          className="h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl text-sm"
+                          value={formData.endDate}
+                          onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="address" className="text-xs font-semibold text-slate-500 uppercase">Địa chỉ (tại Huế hoặc nơi ở)</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500/60" />
+                        <Input 
+                          id="address"
+                          type="text"
+                          placeholder="Khách sạn Hương Giang, Lê Lợi, Huế"
+                          className="pl-11 h-12 bg-slate-50 border-slate-200 focus:bg-white focus:border-purple-600 focus:ring-purple-600/20 rounded-xl transition-all"
+                          value={formData.address}
+                          onChange={(e) => setFormData({...formData, address: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full h-12 bg-purple-900 hover:bg-purple-950 text-white rounded-xl shadow-lg shadow-purple-900/20 font-semibold transition-all mt-4 hover-lift"
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Đang tìm kiếm...
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          Tìm Xe Trống & Báo Giá
+                          <ArrowRight className="w-4 h-4" />
+                        </span>
+                      )}
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                /* Moto Tab */
+                <div className="flex flex-col items-center text-center space-y-6 py-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                    <Bike className="w-10 h-10 text-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold text-purple-950 font-serif">Thuê Xe Máy tại Huế</h2>
+                    <p className="text-slate-500 text-sm leading-relaxed max-w-xs mx-auto">
+                      Dịch vụ cho thuê xe máy đa dạng — xe số, xe ga, xe côn tay — giá cả hợp lý tại Huế.
+                    </p>
+                  </div>
+
+                  {/* 3LMoto Brand Card */}
+                  <div className="w-full bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow">3L</div>
+                      <div className="text-left">
+                        <p className="font-bold text-slate-800 text-base">3L Moto Huế</p>
+                        <p className="text-xs text-orange-600 font-semibold">Chuyên cho thuê xe máy Huế</p>
+                      </div>
+                    </div>
+                    <ul className="text-xs text-slate-600 text-left space-y-1.5">
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" /> Xe số, xe ga, SH, côn tay đa dạng</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" /> Giá từ 120.000đ/ngày</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" /> Giao xe tận nơi, hỗ trợ 24/7</li>
+                    </ul>
+                  </div>
+
+                  <a
+                    href="https://3lmotohue.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 h-12 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/30 transition-all hover-lift"
+                  >
+                    <span>Đặt xe tại 3lmotohue.com</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <p className="text-xs text-slate-400">Bạn sẽ được chuyển đến trang web của 3L Moto Huế</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>
