@@ -374,7 +374,7 @@ export default function DashboardPage() {
                       setSelectedVehicle(vehicle)
                       setIsVehicleDialogOpen(true)
                     }}
-                    className="w-full mt-3 bg-blue-500 hover:bg-blue-600"
+                    className="w-full mt-3 bg-purple-900 hover:bg-purple-950"
                     size="sm"
                   >
                     <Eye className="w-4 h-4 mr-2" />
@@ -466,7 +466,7 @@ export default function DashboardPage() {
                   setIsVehicleDialogOpen(false)
                   router.push("/dashboard/vehicles")
                 }}
-                className="w-full bg-blue-500 hover:bg-blue-600"
+                className="w-full bg-purple-900 hover:bg-purple-950"
               >
                 Xem Chi Tiết Đầy Đủ
               </Button>

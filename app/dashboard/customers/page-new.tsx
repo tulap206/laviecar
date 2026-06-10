@@ -170,7 +170,7 @@ export default function CustomersPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+            <Button className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
               <Plus className="w-4 h-4 mr-2" />
               Thêm khách hàng
             </Button>
@@ -243,7 +243,7 @@ export default function CustomersPage() {
                 <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }} className="rounded-xl">
                   Hủy
                 </Button>
-                <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+                <Button type="submit" className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
                   {editingCustomer ? "Cập nhật" : "Thêm"}
                 </Button>
               </DialogFooter>

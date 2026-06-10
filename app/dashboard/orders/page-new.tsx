@@ -253,7 +253,7 @@ export default function OrdersPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-500 hover:bg-blue-600 gap-2">
+            <Button className="bg-purple-900 hover:bg-purple-950 gap-2">
               <Plus className="w-4 h-4" />
               Thêm Đơn Thuê
             </Button>
@@ -301,7 +301,7 @@ export default function OrdersPage() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={resetForm}>Hủy</Button>
-                <Button type="submit" className="bg-blue-500">Tạo Đơn</Button>
+                <Button type="submit" className="bg-purple-900">Tạo Đơn</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -423,7 +423,7 @@ export default function OrdersPage() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Hủy</Button>
-                <Button type="submit" className="bg-blue-500">Lưu</Button>
+                <Button type="submit" className="bg-purple-900">Lưu</Button>
               </DialogFooter>
             </form>
           )}

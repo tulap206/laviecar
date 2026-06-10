@@ -580,7 +580,7 @@ export default function ReportsPage() {
                 className="border-gray-300 rounded-lg font-mono"
               />
             </div>
-            <Button type="submit" className="w-full bg-blue-500 text-white hover:bg-blue-600 rounded-lg">
+            <Button type="submit" className="w-full bg-purple-900 text-white hover:bg-purple-950 rounded-lg">
               Cập nhật
             </Button>
           </form>
@@ -744,7 +744,7 @@ export default function ReportsPage() {
               <CardDescription className="text-red-600 font-medium text-xs md:text-sm">Quản lý các khoản thu/chi nằm ngoài đơn thuê xe</CardDescription>
             </div>
             <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
-              <Button onClick={() => setIsAddTransactionOpen(true)} className="bg-blue-500 text-white hover:bg-blue-600 text-sm w-full sm:w-auto">
+              <Button onClick={() => setIsAddTransactionOpen(true)} className="bg-purple-900 text-white hover:bg-purple-950 text-sm w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Nhập Thu/Chi
               </Button>
@@ -788,7 +788,7 @@ export default function ReportsPage() {
                       className="border-gray-300 rounded-lg font-mono"
                     />
                   </div>
-                  <Button type="submit" className="w-full bg-blue-500 text-white hover:bg-blue-600 rounded-lg">
+                  <Button type="submit" className="w-full bg-purple-900 text-white hover:bg-purple-950 rounded-lg">
                     Thêm
                   </Button>
                 </form>

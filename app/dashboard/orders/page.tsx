@@ -672,7 +672,7 @@ export default function OrdersPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto bg-blue-500 text-white hover:bg-blue-600 rounded-xl text-sm">
+            <Button className="w-full sm:w-auto bg-purple-900 text-white hover:bg-purple-950 rounded-xl text-sm">
               <Plus className="w-4 h-4 mr-2" />
               Tạo đơn thuê mới
             </Button>
@@ -766,7 +766,7 @@ export default function OrdersPage() {
                 <Button type="button" variant="outline" onClick={resetForm} className="rounded-xl border-gray-200">
                   Hủy
                 </Button>
-                <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+                <Button type="submit" className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
                   Tạo đơn
                 </Button>
               </div>
@@ -1043,7 +1043,7 @@ export default function OrdersPage() {
               {viewingOrder.status === "pending" && (
                 <div className="flex gap-2 pt-4">
                   <Button
-                    className="flex-1 bg-blue-500 text-white hover:bg-blue-600 rounded-xl"
+                    className="flex-1 bg-purple-900 text-white hover:bg-purple-950 rounded-xl"
                     onClick={() => {
                       updateOrderStatus(viewingOrder.id, "active")
                       setViewingOrder(null)
@@ -1203,7 +1203,7 @@ export default function OrdersPage() {
               <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl border-gray-200">
                 Hủy
               </Button>
-              <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+              <Button type="submit" className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
                 Lưu thay đổi
               </Button>
             </DialogFooter>

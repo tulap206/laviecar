@@ -248,7 +248,7 @@ export default function UsersPage() {
           <DialogTrigger asChild>
             <Button
               onClick={() => resetForm()}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-purple-950 hover:bg-purple-950 text-white"
             >
               <Plus className="w-4 h-4 mr-2" />
               Thêm Người Dùng
@@ -325,7 +325,7 @@ export default function UsersPage() {
                 >
                   Hủy
                 </Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                <Button type="submit" className="bg-purple-950 hover:bg-purple-950">
                   {editingUser ? "Cập Nhật" : "Tạo Tài Khoản"}
                 </Button>
               </DialogFooter>

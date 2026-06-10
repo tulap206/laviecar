@@ -576,7 +576,7 @@ export default function VehiclesPage() {
         }
       }}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+            <Button className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
               <Plus className="w-4 h-4 mr-2" />
               Thêm xe mới
             </Button>
@@ -767,7 +767,7 @@ export default function VehiclesPage() {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="rounded-xl border-gray-200">
                 Hủy
               </Button>
-              <Button onClick={handleAddVehicle} className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+              <Button onClick={handleAddVehicle} className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
                 Thêm xe
               </Button>
             </DialogFooter>
@@ -1224,7 +1224,7 @@ export default function VehiclesPage() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl border-gray-200">
               Hủy
             </Button>
-            <Button onClick={handleEditVehicle} className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl">
+            <Button onClick={handleEditVehicle} className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
               Lưu thay đổi
             </Button>
           </DialogFooter>
@@ -1366,7 +1366,7 @@ export default function VehiclesPage() {
                 setIsDetailDialogOpen(false)
                 if (viewingVehicle) openEditDialog(viewingVehicle)
               }} 
-              className="bg-blue-500 text-white hover:bg-blue-600 rounded-xl"
+              className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl"
             >
               <Pencil className="w-4 h-4 mr-2" />
               Chỉnh sửa
@@ -1441,7 +1441,7 @@ export default function VehiclesPage() {
       {/* Floating Action Button */}
       <button
         onClick={() => setIsAddDialogOpen(true)}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 hover:scale-110"
+        className="fixed bottom-8 right-8 w-16 h-16 bg-purple-900 hover:bg-purple-950 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 hover:scale-110"
         title="Thêm xe mới"
       >
         <Plus className="w-8 h-8" />

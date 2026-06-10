@@ -378,7 +378,7 @@ export default function SettingsPage() {
               <Button
                 onClick={handleBackup}
                 disabled={loading}
-                className="bg-blue-500 hover:bg-blue-600 text-white w-full text-sm"
+                className="bg-purple-900 hover:bg-purple-950 text-white w-full text-sm"
               >
                 {loading ? "Đang xử lý..." : "📥 Sao lưu ngay"}
               </Button>
@@ -469,7 +469,7 @@ export default function SettingsPage() {
                       variant="default"
                       onClick={() => handleRestoreFromFile(file.url, file.name)}
                       disabled={loading || user?.role !== 'admin'}
-                      className={`flex-1 text-xs ${user?.role !== 'admin' ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
+                      className={`flex-1 text-xs ${user?.role !== 'admin' ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-purple-900 hover:bg-purple-950'}`}
                       title={user?.role !== 'admin' ? 'Chỉ Admin có quyền khôi phục' : ''}
                     >
                       {user?.role !== 'admin' ? '🔒 Chỉ Admin' : 'Khôi phục'}
