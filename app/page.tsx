@@ -250,8 +250,8 @@ export default function LandingPage() {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-600/5 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          {/* Hero text (7 columns) */}
-          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+          {/* Hero text (8 columns) */}
+          <div className="lg:col-span-8 space-y-6 text-center lg:text-left">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-800/60 border border-purple-500/30 text-amber-300 text-xs font-semibold uppercase tracking-wider">
               <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
               Cho thuê xe ô tô tự lái
@@ -280,8 +280,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Booking Form (5 columns) */}
-          <div id="booking" className="lg:col-span-5 bg-white text-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-purple-100 hover:shadow-purple-900/10 transition-all duration-300">
+          {/* Booking Form (4 columns - shrunk to ~75% width) */}
+          <div id="booking" className="lg:col-span-4 bg-white text-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-purple-100 hover:shadow-purple-900/10 transition-all duration-300 mx-auto lg:mx-0 w-full max-w-md">
             {/* Tab Switcher */}
             <div className="flex border-b border-purple-100">
               <button
