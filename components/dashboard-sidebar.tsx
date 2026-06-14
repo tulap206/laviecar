@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
 import { USERS } from "@/contexts/auth-context"
@@ -60,19 +60,36 @@ const menuItems = [
     href: "/dashboard/reports",
     icon: FileText,
   },
-  {
-    title: "Lịch sử truy cập",
-    href: "/dashboard/access-history",
-    icon: History,
-  },
 ]
 
 export function DashboardSidebar({ children }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  
+  const isPawnshop = pathname.includes("/pawnshop")
+
+  const currentMenuItems = isPawnshop 
+    ? [
+        { title: "Tổng thể", href: "/dashboard/pawnshop?tab=dashboard", icon: LayoutDashboard },
+        { title: "Đồ cầm", href: "/dashboard/pawnshop?tab=assets", icon: Car },
+        { title: "Khách cầm", href: "/dashboard/pawnshop?tab=customers", icon: Users },
+        { title: "Đơn cầm", href: "/dashboard/pawnshop?tab=contracts", icon: ClipboardList },
+        { title: "Lịch sử truy cập", href: "/dashboard/pawnshop?tab=history", icon: History, requireAdmin: true },
+        { title: "Sao lưu khôi phục", href: "/dashboard/pawnshop?tab=backup", icon: Settings, requireAdmin: true },
+      ]
+    : [
+        { title: "Tổng quan", href: "/dashboard", icon: LayoutDashboard },
+        { title: "Quản lý xe", href: "/dashboard/vehicles", icon: Car },
+        { title: "Khách thuê", href: "/dashboard/customers", icon: Users },
+        { title: "Đơn thuê", href: "/dashboard/orders", icon: ClipboardList },
+        { title: "Bảo trì", href: "/dashboard/maintenance", icon: Wrench },
+        { title: "Báo cáo", href: "/dashboard/reports", icon: FileText },
+        { title: "Lịch sử truy cập", href: "/dashboard/access-history", icon: History, requirePermission: "canViewAccessHistory" as const },
+      ]
   
   // Password change state
   const [oldPassword, setOldPassword] = useState("")
@@ -107,46 +124,21 @@ export function DashboardSidebar({ children }: SidebarProps) {
         return
       }
 
-      // Check old password matches current user password
-      // For hardcoded users, check against USERS array
       const foundUser = USERS.find(u => u.username === user?.username && u.password === oldPassword)
       if (!foundUser) {
         setPasswordMessage({ type: 'error', text: '❌ Mật khẩu cũ không đúng' })
         return
       }
 
-      // Update password in Supabase
-      const { supabase } = await import("@/lib/supabase")
-      const { error } = await supabase
-        .from("auth_users")
-        .update({ password: newPassword })
-        .eq("username", user?.username)
-
-      if (error) {
-        console.error("Supabase error:", error)
-        // If the table auth_users does not exist, fall back to updating the local USERS array
-        if (error.code === "PGRST205") {
-          foundUser.password = newPassword
-        } else {
-          throw error
-        }
-      } else {
-        foundUser.password = newPassword
-      }
-
-      setPasswordMessage({ type: 'success', text: '✅ Đổi mật khẩu thành công!' })
-      
-      // Reset form
-      setTimeout(() => {
-        setOldPassword("")
-        setNewPassword("")
-        setConfirmPassword("")
-        setPasswordMessage(null)
-        setIsProfileOpen(false)
-      }, 1500)
+      // Local-only: update in USERS array (session only)
+      foundUser.password = newPassword
+      setPasswordMessage({ type: 'success', text: '✅ Đổi mật khẩu thành công' })
+      setOldPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
     } catch (error) {
-      console.error("Change password error:", error)
-      setPasswordMessage({ type: 'error', text: `❌ Lỗi: ${(error as any).message}` })
+      console.error(error)
+      setPasswordMessage({ type: 'error', text: '❌ Đã có lỗi xảy ra' })
     } finally {
       setChangingPassword(false)
     }
@@ -183,15 +175,25 @@ export function DashboardSidebar({ children }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 py-6 px-3 space-y-2">
-          {menuItems
-            .filter((item) => {
-              if (item.href === "/dashboard/access-history" && user?.role !== "admin") {
+          {currentMenuItems
+            .filter((item: any) => {
+              if (item.requireAdmin && user?.role !== "admin") {
+                return false
+              }
+              if (item.requirePermission === "canViewAccessHistory" && !user?.permissions?.canViewAccessHistory) {
                 return false
               }
               return true
             })
-            .map((item) => {
-              const isActive = pathname === item.href
+            .map((item: any) => {
+              const isActive = pathname === "/dashboard/pawnshop" && item.href === "/dashboard/pawnshop?tab=dashboard"
+                ? true
+                : (pathname === "/dashboard/pawnshop"
+                  ? (searchParams?.get("tab")
+                    ? item.href.includes(`tab=${searchParams.get("tab")}`)
+                    : item.href.includes("tab=dashboard"))
+                  : pathname === item.href)
+
               return (
                 <Link
                   key={item.href}
@@ -226,8 +228,8 @@ export function DashboardSidebar({ children }: SidebarProps) {
             </button>
           )}
           
-          {/* Settings Link - Only visible to Admins */}
-          {user?.role === "admin" && (
+          {/* Settings Link - Only visible to Admins, hidden in Pawnshop */}
+          {user?.role === "admin" && !isPawnshop && (
             <Link
               href="/dashboard/settings"
               onClick={() => setMobileOpen(false)}

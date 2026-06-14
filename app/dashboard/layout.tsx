@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
 
@@ -12,6 +12,7 @@ export default function DashboardLayout({
 }) {
   const { user, isLoading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -30,6 +31,11 @@ export default function DashboardLayout({
 
   if (!user) {
     return null
+  }
+
+  // Bypass DashboardSidebar wrapper for the selection hub page
+  if (pathname === "/dashboard/selection" || pathname.endsWith("/selection")) {
+    return <div className="min-h-screen bg-slate-950 text-slate-100">{children}</div>
   }
 
   return <DashboardSidebar>{children}</DashboardSidebar>

@@ -50,6 +50,7 @@ export interface Customer {
   cccdback: string[]
   licensefront: string[]
   licenseback: string[]
+  birthday?: string
   createdAt?: string
   created_at?: string
 }
@@ -437,4 +438,170 @@ export const markVehicleAsMaintained = async (vehicleId: string, currentKm: numb
     console.error("Error marking vehicle as maintained:", error)
     throw error
   }
+}
+
+// =========================================================================
+// PAWNSHOP INTEGRATION API
+// =========================================================================
+
+export interface PawnAsset {
+  id: string
+  name: string
+  category: "car" | "bike" | "phone" | "laptop" | "gold" | "other"
+  brand: string
+  model: string
+  serialNumber: string
+  condition: string
+  sealCode: string
+  warehouseName: string
+  warehouseLocation: string
+  images: string[]
+  status: "sealed" | "waiting_liquidation" | "liquidated" | "returned"
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PawnContract {
+  id: string
+  contractCode: string
+  customerId: string
+  customerName: string
+  customerPhone: string
+  customerCCCD: string
+  assetId: string
+  assetName: string
+  loanAmount: number
+  interestRateType: "fixed_daily" | "percentage"
+  interestRate: number
+  interestPeriod: "day" | "week" | "month"
+  startDate: string
+  endDate: string
+  nextPaymentDate: string
+  gracePeriodDays: number
+  status: "active" | "overdue" | "bad_debt" | "completed" | "cancelled"
+  notes: string
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PawnLedger {
+  id: string
+  contractId?: string
+  contractCode?: string
+  type: "CASH_OUT_LOAN" | "CASH_IN_INTEREST" | "CASH_IN_PRINCIPAL" | "CASH_IN_LIQUIDATION" | "OPERATIONAL_EXPENSE"
+  amount: number
+  description: string
+  paymentMethod: "cash" | "bank_transfer"
+  user: string
+  vietqrCode?: string
+  timestamp: string
+  created_at?: string
+}
+
+// 1. Assets
+export const fetchPawnAssets = async (): Promise<PawnAsset[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('pawn_assets')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching pawn assets:", error)
+    return []
+  }
+}
+
+export const insertPawnAsset = async (asset: Omit<PawnAsset, 'id' | 'created_at' | 'updated_at'>): Promise<PawnAsset> => {
+  const { data, error } = await supabase
+    .from('pawn_assets')
+    .insert([asset])
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export const updatePawnAsset = async (id: string, asset: Partial<PawnAsset>): Promise<PawnAsset> => {
+  const { data, error } = await supabase
+    .from('pawn_assets')
+    .update(asset)
+    .eq('id', id)
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export const deletePawnAsset = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('pawn_assets')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// 2. Contracts
+export const fetchPawnContracts = async (): Promise<PawnContract[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('pawn_contracts')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching pawn contracts:", error)
+    return []
+  }
+}
+
+export const insertPawnContract = async (contract: Omit<PawnContract, 'id' | 'created_at' | 'updated_at'>): Promise<PawnContract> => {
+  const { data, error } = await supabase
+    .from('pawn_contracts')
+    .insert([contract])
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export const updatePawnContract = async (id: string, contract: Partial<PawnContract>): Promise<PawnContract> => {
+  const { data, error } = await supabase
+    .from('pawn_contracts')
+    .update(contract)
+    .eq('id', id)
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export const deletePawnContract = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('pawn_contracts')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// 3. Ledger
+export const fetchPawnLedger = async (): Promise<PawnLedger[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('pawn_ledger')
+      .select('*')
+      .order('timestamp', { ascending: false })
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching pawn ledger:", error)
+    return []
+  }
+}
+
+export const insertPawnLedger = async (ledger: Omit<PawnLedger, 'id' | 'created_at'>): Promise<PawnLedger> => {
+  const { data, error } = await supabase
+    .from('pawn_ledger')
+    .insert([ledger])
+    .select()
+  if (error) throw error
+  return data[0]
 }

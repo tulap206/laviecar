@@ -23,7 +23,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.push("/dashboard")
+      router.push("/dashboard/selection")
     }
   }, [user, authLoading, router])
 
@@ -35,7 +35,7 @@ export default function LoginPage() {
     const result = await login(formData.username, formData.password)
     
     if (result.success) {
-      router.push("/dashboard")
+      router.push("/dashboard/selection")
     } else {
       setError(result.error || "Đăng nhập thất bại")
       setIsLoading(false)
