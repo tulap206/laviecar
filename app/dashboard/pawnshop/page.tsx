@@ -79,6 +79,7 @@ export default function PawnshopDashboard() {
   // Category & Status Filters for directories
   const [assetCategoryFilter, setAssetCategoryFilter] = useState<string>("all")
   const [assetStatusFilter, setAssetStatusFilter] = useState<string>("all")
+  const [assetLocationFilter, setAssetLocationFilter] = useState<string>("all")
   
   const [customerStatusFilter, setCustomerStatusFilter] = useState<string>("all")
   
@@ -312,7 +313,7 @@ export default function PawnshopDashboard() {
     customerPhone: "",
     customerCCCD: "",
     assetName: "",
-    assetCategory: "phone" as PawnAsset["category"],
+    assetCategory: "bike" as PawnAsset["category"],
     assetBrand: "",
     assetModel: "",
     serialNumber: "",
@@ -324,8 +325,11 @@ export default function PawnshopDashboard() {
     interestRate: "3",
     interestPeriod: "day" as "day" | "week" | "month",
     durationDays: "30",
-    notes: ""
+    notes: "",
+    isPrepaidInterest: false,
+    prepaidInterestAmount: ""
   })
+
 
   // New Customer states
   const [isNewCustomer, setIsNewCustomer] = useState(false)
@@ -346,9 +350,9 @@ export default function PawnshopDashboard() {
     amount: "",
     paymentMethod: "bank_transfer" as "cash" | "bank_transfer",
     type: "CASH_IN_INTEREST" as PawnLedger["type"],
-    description: ""
+    description: "",
+    interestAdjustment: ""
   })
-
   // Toast helper
   const showToast = (message: string, type: "success" | "warning" = "success") => {
     setNotification({ message, type })
@@ -388,7 +392,7 @@ export default function PawnshopDashboard() {
       const { data, error } = await supabase
         .from("access_logs")
         .select("*")
-        .or("module.eq.Cầm đồ,module.eq.Hệ thống")
+        .eq("module", "Cầm đồ")
         .order("timestamp", { ascending: false })
 
       if (error) throw error
@@ -930,12 +934,24 @@ export default function PawnshopDashboard() {
       endDate.setDate(endDate.getDate() + days)
 
       const nextPayDate = new Date()
-      if (contractForm.interestPeriod === "day") {
+      if (contractForm.isPrepaidInterest) {
+        nextPayDate.setTime(endDate.getTime())
+      } else if (contractForm.interestPeriod === "day") {
         nextPayDate.setDate(nextPayDate.getDate() + 1)
       } else if (contractForm.interestPeriod === "week") {
         nextPayDate.setDate(nextPayDate.getDate() + 7)
       } else {
         nextPayDate.setMonth(nextPayDate.getMonth() + 1)
+      }
+
+      // Prepaid interest amount calculation
+      const prepAmt = contractForm.isPrepaidInterest && contractForm.prepaidInterestAmount 
+        ? parseInt(contractForm.prepaidInterestAmount) 
+        : 0
+      
+      let finalNotes = contractForm.notes
+      if (contractForm.isPrepaidInterest && prepAmt > 0) {
+        finalNotes = `[Cắt lãi trước: ${prepAmt.toLocaleString()}đ] ${finalNotes}`.trim()
       }
 
       // 2. Create Pawn Contract
@@ -958,7 +974,7 @@ export default function PawnshopDashboard() {
         nextPaymentDate: nextPayDate.toISOString(),
         gracePeriodDays: 7,
         status: "active",
-        notes: contractForm.notes
+        notes: finalNotes
       })
 
       // 3. Create Loan Disbursement Ledger Record
@@ -972,6 +988,20 @@ export default function PawnshopDashboard() {
         user: user?.username || "staff",
         timestamp: new Date().toISOString()
       })
+
+      // 3b. Create Prepaid Interest Receipt Ledger Record if any
+      if (prepAmt > 0) {
+        await insertPawnLedger({
+          contractId: newContract.id,
+          contractCode: code,
+          type: "CASH_IN_INTEREST",
+          amount: prepAmt,
+          description: `Thu tiền lãi cắt trước khi giải ngân HĐ ${code}`,
+          paymentMethod: "cash",
+          user: user?.username || "staff",
+          timestamp: new Date().toISOString()
+        })
+      }
 
       if (user) {
         await logger.log(
@@ -994,7 +1024,7 @@ export default function PawnshopDashboard() {
         customerPhone: "",
         customerCCCD: "",
         assetName: "",
-        assetCategory: "phone",
+        assetCategory: "bike",
         assetBrand: "",
         assetModel: "",
         serialNumber: "",
@@ -1006,7 +1036,9 @@ export default function PawnshopDashboard() {
         interestRate: "3",
         interestPeriod: "day",
         durationDays: "30",
-        notes: ""
+        notes: "",
+        isPrepaidInterest: false,
+        prepaidInterestAmount: ""
       })
       setIsNewCustomer(false)
       setNewCustomerName("")
@@ -1037,18 +1069,25 @@ export default function PawnshopDashboard() {
       amount: interestDue.toFixed(0),
       paymentMethod: "bank_transfer",
       type: "CASH_IN_INTEREST",
-      description: `CAMDO ${contract.contractCode} KI 1`
+      description: `CAMDO ${contract.contractCode} KI 1`,
+      interestAdjustment: ""
     })
-
-    // Simulated Dynamic VietQR string
-    const bankBin = "970415" 
-    const bankAccount = "109876543210"
-    const amountVal = interestDue.toFixed(0)
-    const syntax = `CAMDO ${contract.contractCode} KI 1`
-    setQrString(`https://api.vietqr.io/image/${bankBin}-${bankAccount}-compact2.jpg?amount=${amountVal}&addInfo=${encodeURIComponent(syntax)}&accountName=LAVIE%20CAR`)
 
     setIsPaymentModalOpen(true)
   }
+
+  // Generate QR code dynamically when form values change
+  useEffect(() => {
+    if (selectedContract && isPaymentModalOpen) {
+      const bankBin = "970415"
+      const bankAccount = "109876543210"
+      const amt = parseInt(paymentForm.amount) || 0
+      const adj = parseInt(paymentForm.interestAdjustment) || 0
+      const actualAmount = Math.max(0, amt - adj)
+      const syntax = paymentForm.description || `CAMDO ${selectedContract.contractCode}`
+      setQrString(`https://api.vietqr.io/image/${bankBin}-${bankAccount}-compact2.jpg?amount=${actualAmount}&addInfo=${encodeURIComponent(syntax)}&accountName=LAVIE%20CAR`)
+    }
+  }, [paymentForm.amount, paymentForm.interestAdjustment, paymentForm.description, selectedContract, isPaymentModalOpen])
 
   // Record Payment
   const handleRecordPayment = async (e: React.FormEvent) => {
@@ -1058,6 +1097,7 @@ export default function PawnshopDashboard() {
     setSubmitting(true)
     try {
       const amt = parseInt(paymentForm.amount)
+      const adj = paymentForm.interestAdjustment ? parseInt(paymentForm.interestAdjustment) : 0
       
       // 1. Add ledger record
       await insertPawnLedger({
@@ -1070,6 +1110,20 @@ export default function PawnshopDashboard() {
         user: user?.username || "staff",
         timestamp: new Date().toISOString()
       })
+
+      // 1b. Add interest adjustment ledger record if any
+      if (adj !== 0) {
+        await insertPawnLedger({
+          contractId: selectedContract.id,
+          contractCode: selectedContract.contractCode,
+          type: "CASH_IN_INTEREST",
+          amount: -adj, // store as negative value
+          description: `Điều chỉnh giảm lãi HĐ ${selectedContract.contractCode}`,
+          paymentMethod: paymentForm.paymentMethod,
+          user: user?.username || "staff",
+          timestamp: new Date().toISOString()
+        })
+      }
 
       // 2. If principal payout, update contract and asset status
       if (paymentForm.type === "CASH_IN_PRINCIPAL") {
@@ -1181,8 +1235,11 @@ export default function PawnshopDashboard() {
 
     const matchesCategory = assetCategoryFilter === "all" || a.category === assetCategoryFilter
     const matchesStatus = assetStatusFilter === "all" || a.status === assetStatusFilter
+    const matchesLocation = assetLocationFilter === "all"
+      ? ["8TTT", "06NT", "38HDD", "3T"].includes(a.warehouseLocation || "")
+      : a.warehouseLocation === assetLocationFilter
 
-    return matchesSearch && matchesCategory && matchesStatus
+    return matchesSearch && matchesCategory && matchesStatus && matchesLocation
   }).sort((a, b) => {
     const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
     const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
@@ -1190,6 +1247,10 @@ export default function PawnshopDashboard() {
   })
 
   const filteredCustomers = customers.filter(c => {
+    // Only display customers who have pawn contracts (no rental-only customers)
+    const isPawnCustomer = contracts.some(contract => contract.customerId === c.id)
+    if (!isPawnCustomer) return false
+
     const matchesSearch = 
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.phone.includes(searchTerm) ||
@@ -1204,9 +1265,9 @@ export default function PawnshopDashboard() {
   // Filter Access logs
   const filteredLogs = accessLogs.filter(log => {
     const matchesSearch = 
-      log.details.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
-      log.username.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
-      log.displayname.toLowerCase().includes(logSearchQuery.toLowerCase())
+      (log.details || "").toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+      (log.username || "").toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+      (log.displayName || "").toLowerCase().includes(logSearchQuery.toLowerCase())
     
     const matchesAction = logFilterAction === "all" || log.action === logFilterAction
     return matchesSearch && matchesAction
@@ -1255,12 +1316,14 @@ export default function PawnshopDashboard() {
     <div className="space-y-6">
       {/* ── Notification Toast ── */}
       {notification && (
-        <div className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border animate-in slide-in-from-top-4 duration-300 ${
+        <div className={`fixed bottom-6 right-6 z-50 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border animate-in slide-in-from-bottom-4 duration-300 ${
           notification.type === "success" 
-            ? "bg-emerald-50 text-white border-emerald-400" 
-            : "bg-red-50 text-white border-red-400"
+            ? "bg-emerald-50 text-emerald-800 border-emerald-200" 
+            : "bg-red-50 text-red-800 border-red-200"
         }`}>
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+          <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${
+            notification.type === "success" ? "text-emerald-500" : "text-red-500"
+          }`} />
           <span className="font-bold">{notification.message}</span>
         </div>
       )}
@@ -1279,7 +1342,7 @@ export default function PawnshopDashboard() {
             <span className="text-xs font-bold text-amber-500">Quản trị Cầm đồ</span>
           </div>
           <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
-            Quản Lý Cầm Đồ Tự Động
+            Quản Lý Cầm Đồ Laviecar
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
             Laviecar Pawnshop · Đo lường hoạt động tài chính tự động
@@ -1556,6 +1619,7 @@ export default function PawnshopDashboard() {
                 <div className="space-y-3.5">
                   {ledger.slice(0, 8).map((l) => {
                     const isIncome = l.type.startsWith("CASH_IN_")
+                    const isNegative = l.amount < 0
                     const typeLabel = l.type === "CASH_OUT_LOAN" 
                       ? "Giải ngân gốc" 
                       : l.type === "CASH_IN_INTEREST"
@@ -1570,15 +1634,15 @@ export default function PawnshopDashboard() {
                       <div key={l.id} className="flex justify-between items-start text-xs border-b border-slate-50 pb-2.5 last:border-0 last:pb-0">
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${isIncome ? "bg-emerald-500" : "bg-red-500"}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${isNegative ? "bg-rose-500" : isIncome ? "bg-emerald-500" : "bg-red-500"}`} />
                             <span className="font-bold text-slate-800">{typeLabel}</span>
                           </div>
                           <p className="text-slate-400 text-[10px] mt-0.5">{l.description}</p>
                           <p className="text-slate-400 text-[9px]">{new Date(l.timestamp).toLocaleString("vi-VN")}</p>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <span className={`font-black ${isIncome ? "text-emerald-600" : "text-red-600"}`}>
-                            {isIncome ? "+" : "-"}{formatPrice(l.amount)}
+                          <span className={`font-black ${isNegative ? "text-rose-600" : isIncome ? "text-emerald-600" : "text-red-600"}`}>
+                            {isNegative ? "-" : isIncome ? "+" : "-"}{formatPrice(Math.abs(l.amount))}
                           </span>
                           <p className="text-slate-400 text-[9px] uppercase font-semibold mt-0.5">{l.paymentMethod === "bank_transfer" ? "Bank" : "Cash"}</p>
                         </div>
@@ -1594,185 +1658,120 @@ export default function PawnshopDashboard() {
         </div>
 
         {/* Analytics & Watchlists Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
+ 
+           {/* Pie Chart: Asset Categories */}
+           <Card className="rounded-2xl border-slate-100 shadow-sm flex flex-col">
+             <CardHeader className="pb-3 border-b border-slate-50">
+               <CardTitle className="text-base font-bold text-slate-800">Cơ Cấu Tài Sản Nhận Cầm</CardTitle>
+               <CardDescription className="text-xs">Tỷ lệ phân loại tài sản thế chấp lưu kho</CardDescription>
+             </CardHeader>
+             <CardContent className="flex justify-center pt-3 flex-1 flex-col justify-center">
+               {reportsData.categoriesChartData.length > 0 ? (
+                 <ResponsiveContainer width="100%" height={260}>
+                   <PieChart>
+                     <Pie
+                       data={reportsData.categoriesChartData}
+                       dataKey="count"
+                       nameKey="name"
+                       cx="50%"
+                       cy="50%"
+                       outerRadius={85}
+                       innerRadius={45}
+                       paddingAngle={3}
+                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                       labelLine={false}
+                     >
+                       {reportsData.categoriesChartData.map((_, index) => {
+                         const COLORS = ["#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444", "#6b7280"]
+                         return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                       })}
+                     </Pie>
+                     <RechartsTooltip formatter={(val: any, name: any) => [`${val} tài sản`, name]} />
+                     <Legend iconType="circle" iconSize={8} />
+                   </PieChart>
+                 </ResponsiveContainer>
+               ) : (
+                 <div className="text-center py-20 text-slate-400 text-sm">Chưa có dữ liệu thống kê tài sản</div>
+               )}
+             </CardContent>
+           </Card>
+ 
+           {/* Monthly Interest Bar Chart */}
+           <Card className="rounded-2xl border-slate-100 shadow-sm flex flex-col">
+             <CardHeader className="pb-3 border-b border-slate-50">
+               <CardTitle className="text-base font-bold text-slate-800">Doanh Thu Thu Lãi Theo Tháng</CardTitle>
+               <CardDescription className="text-xs">Tổng số tiền lãi thu về định kỳ</CardDescription>
+             </CardHeader>
+             <CardContent className="flex justify-center pt-3 flex-1 flex-col justify-center">
+               {reportsData.interestChartData.length > 0 ? (
+                 <ResponsiveContainer width="100%" height={260}>
+                   <BarChart data={reportsData.interestChartData}>
+                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                     <YAxis tick={{ fontSize: 11 }} formatter={(val: any) => formatPrice(val)} />
+                     <RechartsTooltip formatter={(val: any) => formatPrice(val)} />
+                     <Bar dataKey="interest" fill="#10b981" radius={[4, 4, 0, 0]} />
+                   </BarChart>
+                 </ResponsiveContainer>
+               ) : (
+                 <div className="text-center py-20 text-slate-400 text-sm">Chưa có dữ liệu thu lãi</div>
+               )}
+             </CardContent>
+           </Card>
 
-          {/* Pie Chart: Asset Categories */}
-          <Card className="rounded-2xl border-slate-100 shadow-sm">
-            <CardHeader className="pb-3 border-b border-slate-50">
-              <CardTitle className="text-base font-bold text-slate-800">Cơ Cấu Tài Sản Nhận Cầm</CardTitle>
-              <CardDescription className="text-xs">Tỷ lệ phân loại tài sản thế chấp lưu kho</CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center pt-3">
-              {reportsData.categoriesChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={reportsData.categoriesChartData}
-                      dataKey="count"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={90}
-                      innerRadius={48}
-                      paddingAngle={3}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {reportsData.categoriesChartData.map((_, index) => {
-                        const COLORS = ["#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444", "#6b7280"]
-                        return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      })}
-                    </Pie>
-                    <RechartsTooltip formatter={(val: any, name: any) => [`${val} tài sản`, name]} />
-                    <Legend iconType="circle" iconSize={8} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-center py-20 text-slate-400 text-sm">Chưa có dữ liệu thống kê tài sản</div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Monthly Interest Bar Chart */}
-          <Card className="rounded-2xl border-slate-100 shadow-sm">
-            <CardHeader className="pb-3 border-b border-slate-50">
-              <CardTitle className="text-base font-bold text-slate-800">Doanh Thu Thu Lãi Theo Tháng</CardTitle>
-              <CardDescription className="text-xs">Tổng số tiền lãi thu về định kỳ</CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center pt-3">
-              {reportsData.interestChartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={reportsData.interestChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} formatter={(val: any) => formatPrice(val)} />
-                    <RechartsTooltip formatter={(val: any) => formatPrice(val)} />
-                    <Bar dataKey="interest" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-center py-20 text-slate-400 text-sm">Chưa có dữ liệu thu lãi</div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bad Debt Customers & Overdue Assets */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          {/* Bad Debt Top 10 Customers */}
-          <Card className="rounded-2xl border-slate-100 shadow-sm">
-            <CardHeader className="pb-3 border-b border-slate-50">
-              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-500" />
-                Danh Sách Nợ Xấu / Quá Hạn Lớn Nhất
-              </CardTitle>
-              <CardDescription className="text-xs">Top 10 khách hàng có dư nợ xấu cao nhất</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-3 p-0">
-              {(() => {
-                const badDebtContracts = contracts
-                  .filter(c => c.status === "bad_debt" || c.status === "overdue")
-                  .sort((a, b) => b.loanAmount - a.loanAmount)
-                  .slice(0, 10)
-                if (badDebtContracts.length === 0) return (
-                  <div className="text-center py-10 text-slate-400 text-sm">Không có nợ xấu / quá hạn</div>
-                )
-                return (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                          <th className="py-2.5 px-4">#</th>
-                          <th className="py-2.5 px-4">Khách hàng</th>
-                          <th className="py-2.5 px-4">Tài sản</th>
-                          <th className="py-2.5 px-4 text-right">Dư nợ</th>
-                          <th className="py-2.5 px-4 text-center">Tình trạng</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50 text-xs text-slate-700">
-                        {badDebtContracts.map((c, idx) => (
-                          <tr key={c.id} className="hover:bg-red-50/30 transition-colors">
-                            <td className="py-2.5 px-4 text-slate-400 font-bold">{idx + 1}</td>
-                            <td className="py-2.5 px-4">
-                              <span className="font-semibold text-slate-800 block">{c.customerName}</span>
-                              <span className="text-[10px] text-slate-400">{c.customerPhone}</span>
-                            </td>
-                            <td className="py-2.5 px-4 text-slate-600">{c.assetName}</td>
-                            <td className="py-2.5 px-4 text-right font-black text-red-600">{formatPrice(c.loanAmount)}</td>
-                            <td className="py-2.5 px-4 text-center">
-                              <span className={`inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
-                                c.status === "bad_debt" ? "bg-red-50 text-red-700 border-red-200" : "bg-orange-50 text-orange-700 border-orange-200"
-                              }`}>
-                                {c.status === "bad_debt" ? "Nợ xấu" : "Quá hạn"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )
-              })()}
-            </CardContent>
-          </Card>
-
-          {/* Overdue Assets */}
-          <Card className="rounded-2xl border-slate-100 shadow-sm">
-            <CardHeader className="pb-3 border-b border-slate-50">
-              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-orange-500" />
-                Danh Sách Tài Sản Hợp Đồng Quá Hạn
-              </CardTitle>
-              <CardDescription className="text-xs">Tài sản cầm cố thuộc hợp đồng quá hạn chưa thanh lý</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-3 p-0">
-              {(() => {
-                const overdueContracts = contracts.filter(c => {
-                  const isOverdue = new Date(c.nextPaymentDate) < new Date() && c.status !== "completed"
-                  return c.status === "overdue" || c.status === "bad_debt" || isOverdue
-                })
-                if (overdueContracts.length === 0) return (
-                  <div className="text-center py-10 text-slate-400 text-sm">Không có tài sản quá hạn</div>
-                )
-                return (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                          <th className="py-2.5 px-4">#</th>
-                          <th className="py-2.5 px-4">Tài sản</th>
-                          <th className="py-2.5 px-4">Của khách</th>
-                          <th className="py-2.5 px-4">Hạn đóng</th>
-                          <th className="py-2.5 px-4 text-right">Tiền cầm</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50 text-xs text-slate-700">
-                        {overdueContracts.slice(0, 10).map((c, idx) => {
-                          const asset = assets.find(a => a.id === c.assetId)
-                          return (
-                            <tr key={c.id} className="hover:bg-orange-50/30 transition-colors">
-                              <td className="py-2.5 px-4 text-slate-400 font-bold">{idx + 1}</td>
-                              <td className="py-2.5 px-4">
-                                <span className="font-semibold text-slate-800 block">{c.assetName}</span>
-                                <span className="text-[10px] text-slate-400">{asset?.warehouseLocation || "–"}</span>
-                              </td>
-                              <td className="py-2.5 px-4 text-slate-600">{c.customerName}</td>
-                              <td className="py-2.5 px-4 text-orange-600 font-semibold">
-                                {new Date(c.nextPaymentDate).toLocaleDateString("vi-VN")}
-                              </td>
-                              <td className="py-2.5 px-4 text-right font-black text-slate-900">{formatPrice(c.loanAmount)}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )
-              })()}
-            </CardContent>
-          </Card>
-        </div>
+           {/* Overdue Assets */}
+           <Card className="rounded-2xl border-slate-100 shadow-sm flex flex-col">
+             <CardHeader className="pb-3 border-b border-slate-50">
+               <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                 <Clock className="w-4 h-4 text-orange-500" />
+                 Danh Sách Tài Sản Quá Hạn
+               </CardTitle>
+               <CardDescription className="text-xs">Tài sản cầm cố thuộc hợp đồng quá hạn chưa thanh lý</CardDescription>
+             </CardHeader>
+             <CardContent className="pt-3 p-0 flex-1 overflow-y-auto max-h-[292px]">
+               {(() => {
+                 const overdueContracts = contracts.filter(c => {
+                   const isOverdue = new Date(c.nextPaymentDate) < new Date() && c.status !== "completed"
+                   return c.status === "overdue" || c.status === "bad_debt" || isOverdue
+                 })
+                 if (overdueContracts.length === 0) return (
+                   <div className="text-center py-20 text-slate-400 text-sm">Không có tài sản quá hạn</div>
+                 )
+                 return (
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-left border-collapse">
+                       <thead>
+                         <tr className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                           <th className="py-2.5 px-3">#</th>
+                           <th className="py-2.5 px-3">Tài sản</th>
+                           <th className="py-2.5 px-3">Của khách</th>
+                           <th className="py-2.5 px-3 text-right">Tiền cầm</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-50 text-[11px] text-slate-700">
+                         {overdueContracts.slice(0, 15).map((c, idx) => {
+                           const asset = assets.find(a => a.id === c.assetId)
+                           return (
+                             <tr key={c.id} className="hover:bg-orange-50/30 transition-colors">
+                               <td className="py-2 px-3 text-slate-400 font-bold">{idx + 1}</td>
+                               <td className="py-2 px-3">
+                                 <span className="font-semibold text-slate-800 block">{c.assetName}</span>
+                                 <span className="text-[10px] text-slate-400">{asset?.warehouseLocation || "–"}</span>
+                               </td>
+                               <td className="py-2 px-3 text-slate-600 truncate max-w-[80px]">{c.customerName}</td>
+                               <td className="py-2 px-3 text-right font-bold text-slate-950">{formatPrice(c.loanAmount)}</td>
+                             </tr>
+                           )
+                         })}
+                       </tbody>
+                     </table>
+                   </div>
+                 )
+               })()}
+             </CardContent>
+           </Card>
+         </div>
 
       </div>
     )}
@@ -1983,6 +1982,18 @@ export default function PawnshopDashboard() {
                     <SelectItem value="liquidated">Đã thanh lý</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={assetLocationFilter} onValueChange={setAssetLocationFilter}>
+                  <SelectTrigger className="w-full md:w-36 h-9 rounded-xl border-slate-200 text-xs bg-white w-full">
+                    <SelectValue placeholder="Vị trí kho" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả kho</SelectItem>
+                    <SelectItem value="8TTT">8TTT</SelectItem>
+                    <SelectItem value="06NT">06NT</SelectItem>
+                    <SelectItem value="38HDD">38HDD</SelectItem>
+                    <SelectItem value="3T">3T</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardHeader>
@@ -2022,7 +2033,7 @@ export default function PawnshopDashboard() {
                         <td className="py-3 px-4 text-right font-semibold text-slate-900">
                           {contract ? formatPrice(contract.loanAmount) : "-"}
                         </td>
-                        <td className="py-3 px-4">{asset.warehouseName} / {asset.warehouseLocation || "-"}</td>
+                        <td className="py-3 px-4">{asset.warehouseLocation || "-"}</td>
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                             asset.status === "sealed" 
@@ -2261,7 +2272,7 @@ export default function PawnshopDashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-slate-900">{log.displayname}</span>
+                          <span className="font-semibold text-slate-900">{log.displayName}</span>
                           <span className="text-xs text-slate-500">(@{log.username})</span>
                           <span className="text-xs bg-amber-500/10 text-amber-600 font-bold px-2 py-0.5 rounded-full border border-amber-500/20">{log.action}</span>
                         </div>
@@ -2438,11 +2449,11 @@ export default function PawnshopDashboard() {
                 <div className="space-y-1.5 max-w-md">
                   <Label className="text-xs font-semibold text-slate-500">Chọn khách hàng hiện có</Label>
                   <Select onValueChange={handleCustomerSelect}>
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                       <SelectValue placeholder="Chọn khách hàng..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {customers.map(c => (
+                      {customers.filter(c => contracts.some(contract => contract.customerId === c.id)).map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -2555,7 +2566,7 @@ export default function PawnshopDashboard() {
                     value={contractForm.assetCategory} 
                     onValueChange={(val: PawnAsset["category"]) => setContractForm(prev => ({ ...prev, assetCategory: val }))}
                   >
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2591,12 +2602,20 @@ export default function PawnshopDashboard() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-500">Vị trí lưu kho</Label>
-                  <Input 
-                    value={contractForm.warehouseLocation}
-                    onChange={(e) => setContractForm(prev => ({ ...prev, warehouseLocation: e.target.value }))}
-                    placeholder="Ví dụ: Kho ở Hồ Đắc Di"
-                    className="rounded-xl border-slate-200"
-                  />
+                  <Select 
+                    value={contractForm.warehouseLocation} 
+                    onValueChange={(val) => setContractForm(prev => ({ ...prev, warehouseLocation: val }))}
+                  >
+                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
+                      <SelectValue placeholder="Chọn vị trí kho" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="8TTT">8TTT</SelectItem>
+                      <SelectItem value="06NT">06NT</SelectItem>
+                      <SelectItem value="38HDD">38HDD</SelectItem>
+                      <SelectItem value="3T">3T</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -2635,7 +2654,7 @@ export default function PawnshopDashboard() {
                     value={contractForm.interestPeriod}
                     onValueChange={(val: any) => setContractForm(prev => ({ ...prev, interestPeriod: val }))}
                   >
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2670,7 +2689,7 @@ export default function PawnshopDashboard() {
                       }));
                     }}
                   >
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2693,6 +2712,62 @@ export default function PawnshopDashboard() {
                   />
                 </div>
               </div>
+
+              {/* Prepaid interest options */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="prepaid-interest-checkbox"
+                    checked={contractForm.isPrepaidInterest}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      // Calculate default prepaid interest if checked
+                      let defaultPrepaid = ""
+                      if (checked && contractForm.loanAmount && contractForm.interestRate) {
+                        const loan = parseFloat(contractForm.loanAmount) || 0
+                        const rate = parseFloat(contractForm.interestRate) || 0
+                        const days = parseInt(contractForm.durationDays) || 30
+                        if (contractForm.interestRateType === "percentage") {
+                          // Month rate: loan * rate/100 * (days/30)
+                          defaultPrepaid = Math.round(loan * (rate / 100) * (days / 30)).toString()
+                        } else {
+                          // Day rate: X d/million/day * (loan/1,000,000) * days
+                          defaultPrepaid = Math.round((loan / 1000000) * rate * days).toString()
+                        }
+                      }
+                      setContractForm(prev => ({ 
+                        ...prev, 
+                        isPrepaidInterest: checked,
+                        prepaidInterestAmount: defaultPrepaid
+                      }))
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                  />
+                  <Label htmlFor="prepaid-interest-checkbox" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                    Thu lãi trước (Cắt lãi trước khi giải ngân)
+                  </Label>
+                </div>
+                {contractForm.isPrepaidInterest && (
+                  <div className="space-y-1.5 animate-in fade-in duration-200">
+                    <Label className="text-xs font-semibold text-slate-500">Số tiền lãi cắt trước (VNĐ)</Label>
+                    <Input 
+                      type="number"
+                      value={contractForm.prepaidInterestAmount}
+                      onChange={(e) => setContractForm(prev => ({ ...prev, prepaidInterestAmount: e.target.value }))}
+                      placeholder="Số tiền lãi thu trước"
+                      className="rounded-xl border-slate-200 font-bold bg-white"
+                      required
+                    />
+                    {contractForm.loanAmount && contractForm.prepaidInterestAmount && (
+                      <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                        Giải ngân thực tế: {formatPrice(Math.max(0, (parseInt(contractForm.loanAmount) || 0) - (parseInt(contractForm.prepaidInterestAmount) || 0)))}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-500">Ghi chú hợp đồng</Label>
                 <Textarea 
@@ -2757,6 +2832,11 @@ export default function PawnshopDashboard() {
 
               {/* Right Column: Manual Invoice form */}
               <form onSubmit={handleRecordPayment} className="space-y-4">
+                {selectedContract.notes?.includes("[Cắt lãi trước:") && (
+                  <div className="p-3 bg-amber-50 text-amber-800 border border-amber-200 rounded-xl text-xs font-semibold">
+                    ⚠️ Hợp đồng này đã được thu lãi trước. Khách hàng chỉ cần thanh toán tiền gốc để chuộc đồ.
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-500">Phân loại giao dịch</Label>
                   <Select 
@@ -2773,7 +2853,7 @@ export default function PawnshopDashboard() {
                       }))
                     }}
                   >
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2796,12 +2876,28 @@ export default function PawnshopDashboard() {
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-500">Điều chỉnh tăng/giảm lãi (Nhập số dương để giảm lãi cho khách)</Label>
+                  <Input 
+                    type="number"
+                    value={paymentForm.interestAdjustment}
+                    onChange={(e) => setPaymentForm(prev => ({ ...prev, interestAdjustment: e.target.value }))}
+                    placeholder="Ví dụ: 50000"
+                    className="rounded-xl border-slate-200 font-semibold text-rose-600 bg-white"
+                  />
+                  {paymentForm.interestAdjustment && (
+                    <p className="text-[10px] text-rose-500 font-bold mt-0.5">
+                      Khách thực trả: {formatPrice(Math.max(0, (parseInt(paymentForm.amount) || 0) - (parseInt(paymentForm.interestAdjustment) || 0)))}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-500">Phương thức nhận tiền</Label>
                   <Select 
                     value={paymentForm.paymentMethod}
                     onValueChange={(val: any) => setPaymentForm(prev => ({ ...prev, paymentMethod: val }))}
                   >
-                    <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -3009,7 +3105,7 @@ export default function PawnshopDashboard() {
                 value={customerForm.status}
                 onValueChange={(val: "active" | "inactive") => setCustomerForm(prev => ({ ...prev, status: val }))}
               >
-                <SelectTrigger className="rounded-xl border-slate-200 bg-white">
+                <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -3205,16 +3301,24 @@ export default function PawnshopDashboard() {
                     <tbody className="divide-y divide-slate-50 text-slate-700">
                       {ledger.filter(l => l.contractId === selectedContract.id).length > 0 ? (
                         ledger.filter(l => l.contractId === selectedContract.id).map(l => {
-                          const isIncome = l.type === "interest_income" || l.type === "principal_recovery"
+                          const isIncome = l.type.startsWith("CASH_IN_") || l.type === "interest_income" || l.type === "principal_recovery"
+                          const isNegative = l.amount < 0
+                          const typeLabel = l.type === "CASH_OUT_LOAN" 
+                            ? "Giải ngân gốc" 
+                            : (l.type === "CASH_IN_INTEREST" || l.type === "interest_income")
+                            ? "Thu tiền lãi"
+                            : (l.type === "CASH_IN_PRINCIPAL" || l.type === "principal_recovery")
+                            ? "Tất toán gốc"
+                            : l.type === "CASH_IN_LIQUIDATION"
+                            ? "Thanh lý tài sản"
+                            : "Chi phí vận hành"
                           return (
                             <tr key={l.id} className="hover:bg-slate-50/50">
                               <td className="py-2 px-3 text-slate-400">{new Date(l.timestamp).toLocaleString("vi-VN")}</td>
-                              <td className="py-2 px-3 font-semibold">
-                                {l.type === "interest_income" ? "Thu tiền lãi" : l.type === "principal_recovery" ? "Tất toán gốc" : "Chi tiền cầm"}
-                              </td>
+                              <td className="py-2 px-3 font-semibold">{typeLabel}</td>
                               <td className="py-2 px-3 text-slate-500">{l.description}</td>
-                              <td className={`py-2 px-3 text-right font-bold ${isIncome ? "text-emerald-600" : "text-red-600"}`}>
-                                {isIncome ? "+" : "-"}{formatPrice(l.amount)}
+                              <td className={`py-2 px-3 text-right font-bold ${isNegative ? "text-rose-600" : isIncome ? "text-emerald-600" : "text-red-600"}`}>
+                                {isNegative ? "-" : isIncome ? "+" : "-"}{formatPrice(Math.abs(l.amount))}
                               </td>
                             </tr>
                           )
@@ -3286,7 +3390,7 @@ export default function PawnshopDashboard() {
                   value={contractEditForm.interestRateType}
                   onValueChange={(val: "fixed_daily" | "percentage") => setContractEditForm(prev => ({ ...prev, interestRateType: val }))}
                 >
-                  <SelectTrigger className="rounded-xl border-slate-200 bg-white">
+                  <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -3304,7 +3408,7 @@ export default function PawnshopDashboard() {
                   value={contractEditForm.interestPeriod}
                   onValueChange={(val: "day" | "week" | "month") => setContractEditForm(prev => ({ ...prev, interestPeriod: val }))}
                 >
-                  <SelectTrigger className="rounded-xl border-slate-200 bg-white">
+                  <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -3321,7 +3425,7 @@ export default function PawnshopDashboard() {
                   value={contractEditForm.status}
                   onValueChange={(val: PawnContract["status"]) => setContractEditForm(prev => ({ ...prev, status: val }))}
                 >
-                  <SelectTrigger className="rounded-xl border-slate-200 bg-white">
+                  <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
