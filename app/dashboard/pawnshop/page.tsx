@@ -2417,7 +2417,7 @@ export default function PawnshopDashboard() {
 
       {/* ── CREATE CONTRACT MODAL ── */}
       <Dialog open={isContractModalOpen} onOpenChange={setIsContractModalOpen}>
-        <DialogContent className="max-w-6xl rounded-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl rounded-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold font-serif text-slate-800">Lập Hợp Đồng Cầm Đồ Mới</DialogTitle>
             <DialogDescription className="text-slate-400 text-xs">
@@ -2426,7 +2426,7 @@ export default function PawnshopDashboard() {
           </DialogHeader>
  
           <form onSubmit={handleCreateContract} className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2 items-start">
+            <div className="flex flex-col gap-5 pt-2">
               
               {/* Box 1: Hồ sơ khách hàng */}
               <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100/80 space-y-4">
