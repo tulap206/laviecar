@@ -327,7 +327,8 @@ export default function PawnshopDashboard() {
     durationDays: "30",
     notes: "",
     isPrepaidInterest: false,
-    prepaidInterestAmount: ""
+    prepaidInterestAmount: "",
+    startDate: new Date().toISOString().slice(0, 10)
   })
 
 
@@ -928,12 +929,12 @@ export default function PawnshopDashboard() {
       })
 
       // Calculate Dates
-      const startDate = new Date()
+      const startDate = contractForm.startDate ? new Date(contractForm.startDate) : new Date()
       const days = parseInt(contractForm.durationDays) || 30
-      const endDate = new Date()
+      const endDate = new Date(startDate.getTime())
       endDate.setDate(endDate.getDate() + days)
 
-      const nextPayDate = new Date()
+      const nextPayDate = new Date(startDate.getTime())
       if (contractForm.isPrepaidInterest) {
         nextPayDate.setTime(endDate.getTime())
       } else if (contractForm.interestPeriod === "day") {
@@ -1038,7 +1039,8 @@ export default function PawnshopDashboard() {
         durationDays: "30",
         notes: "",
         isPrepaidInterest: false,
-        prepaidInterestAmount: ""
+        prepaidInterestAmount: "",
+        startDate: new Date().toISOString().slice(0, 10)
       })
       setIsNewCustomer(false)
       setNewCustomerName("")
@@ -2415,60 +2417,60 @@ export default function PawnshopDashboard() {
 
       {/* ── CREATE CONTRACT MODAL ── */}
       <Dialog open={isContractModalOpen} onOpenChange={setIsContractModalOpen}>
-        <DialogContent className="max-w-3xl rounded-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl rounded-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold font-serif text-slate-800">Lập Hợp Đồng Cầm Đồ Mới</DialogTitle>
             <DialogDescription className="text-slate-400 text-xs">
               Vui lòng điền hồ sơ khách hàng, chi tiết tài sản thế chấp và cấu hình gói vay tài chính.
             </DialogDescription>
           </DialogHeader>
-
-          <form onSubmit={handleCreateContract} className="space-y-5">
-            
-            {/* Sec 1: Customer Profile */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase text-amber-500 tracking-wider flex items-center gap-1">
-                  <User className="w-3.5 h-3.5" /> 1. Hồ Sơ Khách Hàng
-                </h4>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="new-cust-checkbox"
-                    checked={isNewCustomer}
-                    onChange={(e) => setIsNewCustomer(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
-                  />
-                  <Label htmlFor="new-cust-checkbox" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                    Nhập khách hàng mới
-                  </Label>
+ 
+          <form onSubmit={handleCreateContract} className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2 items-start">
+              
+              {/* Box 1: Hồ sơ khách hàng */}
+              <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100/80 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="text-xs font-black uppercase text-amber-500 tracking-wider flex items-center gap-1.5">
+                    <User className="w-4 h-4" /> 1. Hồ Sơ Khách Hàng
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="new-cust-checkbox"
+                      checked={isNewCustomer}
+                      onChange={(e) => setIsNewCustomer(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                    />
+                    <Label htmlFor="new-cust-checkbox" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                      Khách mới
+                    </Label>
+                  </div>
                 </div>
-              </div>
 
-              {!isNewCustomer ? (
-                <div className="space-y-1.5 max-w-md">
-                  <Label className="text-xs font-semibold text-slate-500">Chọn khách hàng hiện có</Label>
-                  <Select onValueChange={handleCustomerSelect}>
-                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
-                      <SelectValue placeholder="Chọn khách hàng..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.filter(c => contracts.some(contract => contract.customerId === c.id)).map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {!isNewCustomer ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-500">Chọn khách hàng hiện có</Label>
+                    <Select onValueChange={handleCustomerSelect}>
+                      <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
+                        <SelectValue placeholder="Chọn khách hàng..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.filter(c => contracts.some(contract => contract.customerId === c.id)).map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-slate-500">Họ và tên *</Label>
                       <Input
                         value={newCustomerName}
                         onChange={(e) => setNewCustomerName(e.target.value)}
                         placeholder="Nguyễn Văn A"
-                        className="rounded-xl border-slate-200"
+                        className="rounded-xl border-slate-200 bg-white"
                         required
                       />
                     </div>
@@ -2478,20 +2480,17 @@ export default function PawnshopDashboard() {
                         value={newCustomerPhone}
                         onChange={(e) => setNewCustomerPhone(e.target.value)}
                         placeholder="0901234567"
-                        className="rounded-xl border-slate-200"
+                        className="rounded-xl border-slate-200 bg-white"
                         required
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-slate-500">Ngày sinh</Label>
                       <Input
                         type="date"
                         value={newCustomerBirthday}
                         onChange={(e) => setNewCustomerBirthday(e.target.value)}
-                        className="rounded-xl border-slate-200"
+                        className="rounded-xl border-slate-200 bg-white"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -2500,286 +2499,287 @@ export default function PawnshopDashboard() {
                         value={newCustomerCCCD}
                         onChange={(e) => setNewCustomerCCCD(e.target.value)}
                         placeholder="012345678912"
-                        className="rounded-xl border-slate-200"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-500">Địa chỉ thường trú</Label>
-                    <Input
-                      value={newCustomerAddress}
-                      onChange={(e) => setNewCustomerAddress(e.target.value)}
-                      placeholder="123 Đường ABC, Quận XYZ..."
-                      className="rounded-xl border-slate-200"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                        <Camera className="w-3.5 h-3.5 text-amber-500" /> Ảnh khách hàng
-                      </Label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setCustomerPhotoFile(e.target.files?.[0] || null)}
-                        className="rounded-xl border-slate-200 text-xs"
+                        className="rounded-xl border-slate-200 bg-white"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                        <Camera className="w-3.5 h-3.5 text-amber-500" /> Ảnh CCCD mặt trước
-                      </Label>
+                      <Label className="text-xs font-semibold text-slate-500">Địa chỉ thường trú</Label>
                       <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setCccdFrontFile(e.target.files?.[0] || null)}
-                        className="rounded-xl border-slate-200 text-xs"
+                        value={newCustomerAddress}
+                        onChange={(e) => setNewCustomerAddress(e.target.value)}
+                        placeholder="123 Đường ABC, Quận XYZ..."
+                        className="rounded-xl border-slate-200 bg-white"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                        <Camera className="w-3.5 h-3.5 text-amber-500" /> Ảnh CCCD mặt sau
-                      </Label>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setCccdBackFile(e.target.files?.[0] || null)}
-                        className="rounded-xl border-slate-200 text-xs"
-                      />
+                    <div className="space-y-3 pt-1">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                          <Camera className="w-3.5 h-3.5 text-amber-500" /> Ảnh chân dung
+                        </Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setCustomerPhotoFile(e.target.files?.[0] || null)}
+                          className="rounded-xl border-slate-200 text-xs bg-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                          <Camera className="w-3.5 h-3.5 text-amber-500" /> Ảnh CCCD mặt trước
+                        </Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setCccdFrontFile(e.target.files?.[0] || null)}
+                          className="rounded-xl border-slate-200 text-xs bg-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                          <Camera className="w-3.5 h-3.5 text-amber-500" /> Ảnh CCCD mặt sau
+                        </Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => setCccdBackFile(e.target.files?.[0] || null)}
+                          className="rounded-xl border-slate-200 text-xs bg-white"
+                        />
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Sec 2: Asset Details */}
-            <div className="space-y-4 border-t border-slate-100 pt-4">
-              <h4 className="text-xs font-black uppercase text-amber-500 tracking-wider flex items-center gap-1">
-                <Shield className="w-3.5 h-3.5" /> 2. Thông Tin Tài Sản Cầm Cố
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-500">Phân loại tài sản</Label>
-                  <Select 
-                    value={contractForm.assetCategory} 
-                    onValueChange={(val: PawnAsset["category"]) => setContractForm(prev => ({ ...prev, assetCategory: val }))}
-                  >
-                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="phone">Điện thoại</SelectItem>
-                      <SelectItem value="bike">Xe máy</SelectItem>
-                      <SelectItem value="car">Ô tô</SelectItem>
-                      <SelectItem value="laptop">Laptop / PC</SelectItem>
-                      <SelectItem value="gold">Vàng / Trang sức</SelectItem>
-                      <SelectItem value="other">Loại khác</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-500">Tên tài sản (Hãng / Dòng máy)</Label>
-                  <Input 
-                    value={contractForm.assetName}
-                    onChange={(e) => setContractForm(prev => ({ ...prev, assetName: e.target.value }))}
-                    placeholder="Ví dụ: iPhone 15 Pro Max"
-                    className="rounded-xl border-slate-200"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-500">Hiện trạng thực tế</Label>
-                  <Input 
-                    value={contractForm.condition}
-                    onChange={(e) => setContractForm(prev => ({ ...prev, condition: e.target.value }))}
-                    placeholder="Xước nhẹ lưng, móp nhẹ viền..."
-                    className="rounded-xl border-slate-200"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-500">Vị trí lưu kho</Label>
-                  <Select 
-                    value={contractForm.warehouseLocation} 
-                    onValueChange={(val) => setContractForm(prev => ({ ...prev, warehouseLocation: val }))}
-                  >
-                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
-                      <SelectValue placeholder="Chọn vị trí kho" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="8TTT">8TTT</SelectItem>
-                      <SelectItem value="06NT">06NT</SelectItem>
-                      <SelectItem value="38HDD">38HDD</SelectItem>
-                      <SelectItem value="3T">3T</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                  <Camera className="w-3.5 h-3.5 text-amber-500" /> Ảnh tài sản cầm cố
-                </Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setAssetImageFile(e.target.files?.[0] || null)}
-                  className="rounded-xl border-slate-200 text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Sec 3: Loan Config */}
-            <div className="space-y-4 border-t border-slate-100 pt-4">
-              <h4 className="text-xs font-black uppercase text-amber-500 tracking-wider flex items-center gap-1">
-                <Wallet className="w-3.5 h-3.5" /> 3. Cấu Hình Khoản Vay & Lãi Suất
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1.5 sm:col-span-1">
-                  <Label className="text-xs font-semibold text-slate-500">Số tiền giải ngân gốc (VNĐ)</Label>
-                  <Input 
-                    type="number"
-                    value={contractForm.loanAmount}
-                    onChange={(e) => setContractForm(prev => ({ ...prev, loanAmount: e.target.value }))}
-                    placeholder="Số tiền gốc"
-                    className="rounded-xl border-slate-200 font-bold"
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-500">Chu kỳ trả lãi</Label>
-                  <Select 
-                    value={contractForm.interestPeriod}
-                    onValueChange={(val: any) => setContractForm(prev => ({ ...prev, interestPeriod: val }))}
-                  >
-                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="day">Theo ngày</SelectItem>
-                      <SelectItem value="week">Theo tuần</SelectItem>
-                      <SelectItem value="month">Theo tháng</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-500">Thời hạn cầm (Ngày)</Label>
-                  <Input 
-                    type="number"
-                    value={contractForm.durationDays}
-                    onChange={(e) => setContractForm(prev => ({ ...prev, durationDays: e.target.value }))}
-                    placeholder="30"
-                    className="rounded-xl border-slate-200"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-500">Công thức tính lãi</Label>
-                  <Select 
-                    value={contractForm.interestRateType}
-                    onValueChange={(val: any) => {
-                      setContractForm(prev => ({ 
-                        ...prev, 
-                        interestRateType: val,
-                        interestPeriod: val === "fixed_daily" ? "day" : "month",
-                        interestRate: val === "fixed_daily" ? "3" : "2.5"
-                      }));
-                    }}
-                  >
-                    <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="percentage">Theo phần trăm (%)</SelectItem>
-                      <SelectItem value="fixed_daily">Theo ngày (nghìn đồng/triệu/ngày)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-500">
-                    {contractForm.interestRateType === "percentage" ? "Tỷ lệ phần trăm lãi suất" : "Lãi suất (nghìn đồng/triệu/ngày)"}
-                  </Label>
-                  <Input 
-                    type="number"
-                    step="0.1"
-                    value={contractForm.interestRate}
-                    onChange={(e) => setContractForm(prev => ({ ...prev, interestRate: e.target.value }))}
-                    placeholder={contractForm.interestRateType === "percentage" ? "2.5" : "3"}
-                    className="rounded-xl border-slate-200"
-                  />
-                </div>
-              </div>
-
-              {/* Prepaid interest options */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    id="prepaid-interest-checkbox"
-                    checked={contractForm.isPrepaidInterest}
-                    onChange={(e) => {
-                      const checked = e.target.checked
-                      // Calculate default prepaid interest if checked
-                      let defaultPrepaid = ""
-                      if (checked && contractForm.loanAmount && contractForm.interestRate) {
-                        const loan = parseFloat(contractForm.loanAmount) || 0
-                        const rate = parseFloat(contractForm.interestRate) || 0
-                        const days = parseInt(contractForm.durationDays) || 30
-                        if (contractForm.interestRateType === "percentage") {
-                          // Month rate: loan * rate/100 * (days/30)
-                          defaultPrepaid = Math.round(loan * (rate / 100) * (days / 30)).toString()
-                        } else {
-                          // Day rate: X d/million/day * (loan/1,000,000) * days
-                          defaultPrepaid = Math.round((loan / 1000000) * rate * days).toString()
-                        }
-                      }
-                      setContractForm(prev => ({ 
-                        ...prev, 
-                        isPrepaidInterest: checked,
-                        prepaidInterestAmount: defaultPrepaid
-                      }))
-                    }}
-                    className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
-                  />
-                  <Label htmlFor="prepaid-interest-checkbox" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                    Thu lãi trước (Cắt lãi trước khi giải ngân)
-                  </Label>
-                </div>
-                {contractForm.isPrepaidInterest && (
-                  <div className="space-y-1.5 animate-in fade-in duration-200">
-                    <Label className="text-xs font-semibold text-slate-500">Số tiền lãi cắt trước (VNĐ)</Label>
-                    <Input 
-                      type="number"
-                      value={contractForm.prepaidInterestAmount}
-                      onChange={(e) => setContractForm(prev => ({ ...prev, prepaidInterestAmount: e.target.value }))}
-                      placeholder="Số tiền lãi thu trước"
-                      className="rounded-xl border-slate-200 font-bold bg-white"
-                      required
-                    />
-                    {contractForm.loanAmount && contractForm.prepaidInterestAmount && (
-                      <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
-                        Giải ngân thực tế: {formatPrice(Math.max(0, (parseInt(contractForm.loanAmount) || 0) - (parseInt(contractForm.prepaidInterestAmount) || 0)))}
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-500">Ghi chú hợp đồng</Label>
-                <Textarea 
-                  value={contractForm.notes}
-                  onChange={(e) => setContractForm(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Ghi chú thêm về điều khoản hoặc thỏa thuận tài sản..."
-                  className="rounded-xl border-slate-200 min-h-[60px]"
-                />
+              {/* Box 2: Thông tin tài sản cầm cố */}
+              <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100/80 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="text-xs font-black uppercase text-amber-500 tracking-wider flex items-center gap-1.5">
+                    <Shield className="w-4 h-4" /> 2. Thông Tin Tài Sản
+                  </h4>
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-500">Phân loại tài sản</Label>
+                    <Select 
+                      value={contractForm.assetCategory} 
+                      onValueChange={(val: PawnAsset["category"]) => setContractForm(prev => ({ ...prev, assetCategory: val }))}
+                    >
+                      <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="phone">Điện thoại</SelectItem>
+                        <SelectItem value="bike">Xe máy</SelectItem>
+                        <SelectItem value="car">Ô tô</SelectItem>
+                        <SelectItem value="laptop">Laptop / PC</SelectItem>
+                        <SelectItem value="gold">Vàng / Trang sức</SelectItem>
+                        <SelectItem value="other">Loại khác</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-500">Tên tài sản (Hãng / Dòng máy)</Label>
+                    <Input 
+                      value={contractForm.assetName}
+                      onChange={(e) => setContractForm(prev => ({ ...prev, assetName: e.target.value }))}
+                      placeholder="Ví dụ: iPhone 15 Pro Max"
+                      className="rounded-xl border-slate-200 bg-white"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-500">Hiện trạng thực tế</Label>
+                    <Input 
+                      value={contractForm.condition}
+                      onChange={(e) => setContractForm(prev => ({ ...prev, condition: e.target.value }))}
+                      placeholder="Xước nhẹ lưng, móp nhẹ viền..."
+                      className="rounded-xl border-slate-200 bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-500">Vị trí lưu kho</Label>
+                    <Select 
+                      value={contractForm.warehouseLocation} 
+                      onValueChange={(val) => setContractForm(prev => ({ ...prev, warehouseLocation: val }))}
+                    >
+                      <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
+                        <SelectValue placeholder="Chọn vị trí kho" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="8TTT">8TTT</SelectItem>
+                        <SelectItem value="06NT">06NT</SelectItem>
+                        <SelectItem value="38HDD">38HDD</SelectItem>
+                        <SelectItem value="3T">3T</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                      <Camera className="w-3.5 h-3.5 text-amber-500" /> Ảnh tài sản cầm cố
+                    </Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setAssetImageFile(e.target.files?.[0] || null)}
+                      className="rounded-xl border-slate-200 text-xs bg-white"
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Box 3: Cấu hình khoản vay */}
+              <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100/80 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="text-xs font-black uppercase text-amber-500 tracking-wider flex items-center gap-1.5">
+                    <Wallet className="w-4 h-4" /> 3. Cấu Hợp Đồng
+                  </h4>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-500">Số tiền giải ngân gốc (VNĐ)</Label>
+                    <Input 
+                      type="number"
+                      value={contractForm.loanAmount}
+                      onChange={(e) => setContractForm(prev => ({ ...prev, loanAmount: e.target.value }))}
+                      placeholder="Số tiền gốc"
+                      className="rounded-xl border-slate-200 font-bold bg-white"
+                      required
+                    />
+                  </div>
+
+                  {/* Dòng 1: Ngày cầm & Thời hạn cầm */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-500">Ngày cầm</Label>
+                      <Input 
+                        type="date"
+                        value={contractForm.startDate}
+                        onChange={(e) => setContractForm(prev => ({ ...prev, startDate: e.target.value }))}
+                        className="rounded-xl border-slate-200 bg-white"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-500">Thời hạn cầm (Ngày)</Label>
+                      <Input 
+                        type="number"
+                        value={contractForm.durationDays}
+                        onChange={(e) => setContractForm(prev => ({ ...prev, durationDays: e.target.value }))}
+                        placeholder="30"
+                        className="rounded-xl border-slate-200 bg-white"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dòng 2: Công suất tính lãi & Lãi suất */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-500">Công thức tính lãi</Label>
+                      <Select 
+                        value={contractForm.interestRateType}
+                        onValueChange={(val: any) => {
+                          setContractForm(prev => ({ 
+                            ...prev, 
+                            interestRateType: val,
+                            interestPeriod: "day", // Defaulting to day as requested
+                            interestRate: val === "fixed_daily" ? "3" : "2.5"
+                          }));
+                        }}
+                      >
+                        <SelectTrigger className="rounded-xl border-slate-200 bg-white w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="percentage">Theo phần trăm (%)</SelectItem>
+                          <SelectItem value="fixed_daily">Theo ngày (nghìn/triệu/ngày)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-slate-500">
+                        {contractForm.interestRateType === "percentage" ? "Lãi suất (%)" : "Lãi suất (nghìn/triệu/ngày)"}
+                      </Label>
+                      <Input 
+                        type="number"
+                        step="0.1"
+                        value={contractForm.interestRate}
+                        onChange={(e) => setContractForm(prev => ({ ...prev, interestRate: e.target.value }))}
+                        placeholder={contractForm.interestRateType === "percentage" ? "2.5" : "3"}
+                        className="rounded-xl border-slate-200 bg-white font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dòng 3: Tùy chọn thu lãi trước */}
+                  <div className="p-3.5 bg-white rounded-xl border border-slate-100 space-y-2.5 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        id="prepaid-interest-checkbox"
+                        checked={contractForm.isPrepaidInterest}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          let defaultPrepaid = ""
+                          if (checked && contractForm.loanAmount && contractForm.interestRate) {
+                            const loan = parseFloat(contractForm.loanAmount) || 0
+                            const rate = parseFloat(contractForm.interestRate) || 0
+                            const days = parseInt(contractForm.durationDays) || 30
+                            if (contractForm.interestRateType === "percentage") {
+                              defaultPrepaid = Math.round(loan * (rate / 100) * (days / 30)).toString()
+                            } else {
+                              defaultPrepaid = Math.round((loan / 1000000) * rate * days).toString()
+                            }
+                          }
+                          setContractForm(prev => ({ 
+                            ...prev, 
+                            isPrepaidInterest: checked,
+                            prepaidInterestAmount: defaultPrepaid
+                          }))
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <Label htmlFor="prepaid-interest-checkbox" className="text-xs font-bold text-slate-700 cursor-pointer">
+                        Thu lãi trước (Cắt khi giải ngân)
+                      </Label>
+                    </div>
+                    {contractForm.isPrepaidInterest && (
+                      <div className="space-y-1.5 pt-1 animate-in fade-in duration-200">
+                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Số tiền lãi cắt trước (VNĐ)</Label>
+                        <Input 
+                          type="number"
+                          value={contractForm.prepaidInterestAmount}
+                          onChange={(e) => setContractForm(prev => ({ ...prev, prepaidInterestAmount: e.target.value }))}
+                          placeholder="Nhập số tiền lãi"
+                          className="rounded-xl border-slate-200 font-bold bg-white text-xs"
+                          required
+                        />
+                        {contractForm.loanAmount && contractForm.prepaidInterestAmount && (
+                          <p className="text-[10px] text-amber-600 font-bold mt-0.5">
+                            Thực tế giải ngân: {formatPrice(Math.max(0, (parseInt(contractForm.loanAmount) || 0) - (parseInt(contractForm.prepaidInterestAmount) || 0)))}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dòng 4: Ghi chú */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-500">Ghi chú hợp đồng</Label>
+                    <Textarea 
+                      value={contractForm.notes}
+                      onChange={(e) => setContractForm(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Thỏa thuận khác..."
+                      className="rounded-xl border-slate-200 min-h-[60px] bg-white text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            <DialogFooter className="pt-2">
+            <DialogFooter className="pt-4 border-t border-slate-100 mt-2">
               <Button 
                 type="button" 
                 variant="outline" 
