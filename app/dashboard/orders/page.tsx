@@ -51,7 +51,7 @@ import {
 } from "@/components/dashboard/rental-ui"
 import { cn } from "@/lib/utils"
 import { Plus, Search, Eye, ClipboardList, Calendar, User, Car, Settings, X, ImageIcon, Phone, MapPin, Facebook, Trash2, Printer, FileText, Play, CheckCircle, DollarSign } from "lucide-react"
-import { QUY79_BUSINESS } from "@/lib/business-info"
+import { LAVIECAR_BUSINESS } from "@/lib/business-info"
 import { PrintBusinessHeader, PrintShopPartyBlock } from "@/components/dashboard/print-business-blocks"
 
 interface RentalOrder {
@@ -1568,19 +1568,19 @@ export default function OrdersPage() {
               <div className="pt-4 border-t border-gray-100">
                 <div className="bg-slate-950 text-white p-4 rounded-xl flex flex-col items-center space-y-2">
                   <div className="flex items-center justify-between w-full border-b border-slate-800 pb-2">
-                    <span className="text-xs bg-red-600 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Mã QR VietinBank</span>
-                    <span className="text-xs text-slate-400">Mr. Quý - 0762 75 3333</span>
+                    <span className="text-xs bg-purple-600 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Mã QR Techcombank</span>
+                    <span className="text-xs text-slate-400">Mr. Lập - {LAVIECAR_BUSINESS.hotline}</span>
                   </div>
                   
                   <div className="w-40 h-40 bg-white p-1.5 rounded-lg overflow-hidden flex items-center justify-center my-1.5 shadow-md">
                     <img 
-                      src={`https://img.vietqr.io/image/ICB-${QUY79_BUSINESS.bank.accountNumber}-qr_only.png?amount=${viewingOrder.totalPrice}&addInfo=${encodeURIComponent(`TT DON HONG ${viewingOrder.rentalCode || viewingOrder.id}`)}&accountName=${encodeURIComponent(QUY79_BUSINESS.bank.accountHolderLatin)}`}
+                      src={`https://img.vietqr.io/image/TCB-${LAVIECAR_BUSINESS.bank.accountNumber}-qr_only.png?amount=${viewingOrder.totalPrice}&addInfo=${encodeURIComponent(`TT DON HONG ${viewingOrder.rentalCode || viewingOrder.id}`)}&accountName=${encodeURIComponent(LAVIECAR_BUSINESS.bank.accountHolderLatin)}`}
                       alt="VietQR"
                       className="w-full h-full object-contain"
                     />
                   </div>
                   <div className="text-xs text-slate-300 text-center space-y-0.5">
-                    <p className="font-bold text-red-500 text-sm">Số tiền: {viewingOrder.totalPrice.toLocaleString("vi-VN")} VND</p>
+                    <p className="font-bold text-purple-400 text-sm">Số tiền: {viewingOrder.totalPrice.toLocaleString("vi-VN")} VND</p>
                     <p className="text-slate-400">Dùng App Ngân hàng quét QR để thanh toán cọc hoặc tất toán đơn</p>
                   </div>
                 </div>
