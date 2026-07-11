@@ -793,7 +793,7 @@ export default function OrdersPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-xl text-sm">
+            <Button className="w-full sm:w-auto bg-purple-900 text-white hover:bg-purple-950 rounded-xl text-sm">
               <Plus className="w-4 h-4 mr-2" />
               Tạo đơn thuê mới
             </Button>
@@ -1059,7 +1059,7 @@ export default function OrdersPage() {
                 <Button type="button" variant="outline" onClick={resetForm} className="rounded-xl border-gray-200">
                   Hủy
                 </Button>
-                <Button type="submit" className="bg-red-600 text-white hover:bg-red-700 rounded-xl">
+                <Button type="submit" className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
                   Tạo đơn
                 </Button>
               </div>

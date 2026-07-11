@@ -171,9 +171,9 @@ export default function MaintenancePage() {
         </CardContent>
       </Card>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">ℹ️ Hướng dẫn bảo trì</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <h3 className="font-semibold text-purple-900 mb-2">ℹ️ Hướng dẫn bảo trì</h3>
+        <ul className="text-sm text-purple-800 space-y-1">
           <li>• Xe được đánh dấu cần bảo trì khi ODO đạt bội số của 1000 KM</li>
           <li>• Ví dụ: Xe mới chưa bảo trì (0 KM) → cần bảo trì lần đầu ở 1000 KM</li>
           <li>• Sau khi bảo trì 1000 KM → lần tiếp theo ở 2000 KM, 3000 KM, v.v...</li>

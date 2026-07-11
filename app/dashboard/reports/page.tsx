@@ -633,7 +633,7 @@ export default function ReportsPage() {
                   fontSize: "12px"
                 }}
               />
-              <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenue" fill="#7c3aed" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
