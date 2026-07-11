@@ -605,3 +605,171 @@ export const insertPawnLedger = async (ledger: Omit<PawnLedger, 'id' | 'created_
   if (error) throw error
   return data[0]
 }
+
+// =========================================================================
+// LOAN MANAGEMENT (CHO VAY)
+// =========================================================================
+
+export interface LoanBorrower {
+  id: string
+  name: string
+  phone: string
+  facebook?: string
+  address?: string
+  idcard?: string
+  totalloans: number
+  status: "active" | "inactive"
+  borrowerphoto: string[]
+  cccdfront: string[]
+  cccdback: string[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface LoanAgreement {
+  id: string
+  loancode: string
+  borrowerid: string
+  borrowername: string
+  borrowerphone: string
+  borrowercccd?: string
+  loanamount: number
+  interestratetype: "fixed_daily" | "percentage"
+  interestrate: number
+  interestperiod: "day" | "week" | "month"
+  interestpaymentcycle: number
+  startdate: string
+  duedate: string
+  nextpaymentdate?: string
+  graceperioddays: number
+  status: "active" | "overdue" | "bad_debt" | "completed" | "cancelled"
+  purpose?: string
+  notes?: string
+  collateral?: string
+  collateralvalue: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface LoanLedger {
+  id: string
+  agreementid?: string
+  loancode?: string
+  type: "CASH_OUT_LOAN" | "CASH_IN_INTEREST" | "CASH_IN_PRINCIPAL" | "CASH_IN_EARLY" | "OPERATIONAL_EXPENSE"
+  amount: number
+  description: string
+  paymentmethod: "cash" | "bank_transfer"
+  user: string
+  vietqrcode?: string
+  timestamp: string
+  created_at?: string
+}
+
+// Loan Borrowers
+export const fetchLoanBorrowers = async (): Promise<LoanBorrower[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('loan_borrowers')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching loan borrowers:", error)
+    return []
+  }
+}
+
+export const insertLoanBorrower = async (borrower: Omit<LoanBorrower, 'id' | 'created_at' | 'updated_at'>): Promise<LoanBorrower> => {
+  const { data, error } = await supabase
+    .from('loan_borrowers')
+    .insert([borrower])
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export const updateLoanBorrower = async (id: string, borrower: Partial<LoanBorrower>): Promise<LoanBorrower> => {
+  const { data, error } = await supabase
+    .from('loan_borrowers')
+    .update(borrower)
+    .eq('id', id)
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export const deleteLoanBorrower = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('loan_borrowers')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// Loan Agreements
+export const fetchLoanAgreements = async (): Promise<LoanAgreement[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('loan_agreements')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching loan agreements:", error)
+    return []
+  }
+}
+
+export const insertLoanAgreement = async (agreement: Omit<LoanAgreement, 'id' | 'created_at' | 'updated_at'>): Promise<LoanAgreement> => {
+  const { data, error } = await supabase
+    .from('loan_agreements')
+    .insert([agreement])
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export const updateLoanAgreement = async (id: string, agreement: Partial<LoanAgreement>): Promise<LoanAgreement> => {
+  const { data, error } = await supabase
+    .from('loan_agreements')
+    .update(agreement)
+    .eq('id', id)
+    .select()
+  if (error) throw error
+  return data[0]
+}
+
+export const deleteLoanAgreement = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('loan_agreements')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// Loan Ledger
+export const fetchLoanLedger = async (): Promise<LoanLedger[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('loan_ledger')
+      .select('*')
+      .order('timestamp', { ascending: false })
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching loan ledger:", error)
+    return []
+  }
+}
+
+export const insertLoanLedger = async (ledger: Omit<LoanLedger, 'id' | 'created_at'>): Promise<LoanLedger> => {
+  const { data, error } = await supabase
+    .from('loan_ledger')
+    .insert([ledger])
+    .select()
+  if (error) throw error
+  return data[0]
+}
+

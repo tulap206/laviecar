@@ -4,16 +4,12 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Shield, Car, LogOut } from "lucide-react"
+import { Shield, Car, LogOut, Receipt } from "lucide-react"
 import Image from "next/image"
 
 export default function SelectionPage() {
   const router = useRouter()
   const { user, logout } = useAuth()
-
-  const handlePawnshopClick = () => {
-    router.push("/dashboard/pawnshop")
-  }
 
   const handleLogout = () => {
     logout()
@@ -89,21 +85,21 @@ export default function SelectionPage() {
             </CardContent>
           </Card>
 
-          {/* Right card: Pawnshop System */}
+          {/* Right card: Loan Management System */}
           <Card
-            onClick={handlePawnshopClick}
+            onClick={() => router.push("/dashboard/loan-management")}
             className="cursor-pointer group relative overflow-hidden bg-white/95 hover:bg-white border border-white/20 hover:border-amber-500/40 rounded-3xl shadow-xl hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-300 transform hover:-translate-y-1"
           >
             <CardContent className="p-8 flex flex-col items-center text-center gap-5">
               <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-500 transition-colors duration-300">
-                <Shield className="w-8 h-8 text-amber-500 group-hover:text-white transition-colors duration-300" />
+                <Receipt className="w-8 h-8 text-amber-500 group-hover:text-white transition-colors duration-300" />
               </div>
               <div>
                 <h3 className="text-xl font-bold text-slate-800 font-serif">
-                  Quản trị Cầm đồ
+                  Quản trị Cho vay
                 </h3>
                 <p className="text-slate-500 text-sm mt-2">
-                  Quản lý tài sản cầm cố, lãi suất chu kỳ định kỳ, gia hạn hợp đồng cầm đồ, thanh lý tài sản.
+                  Hỗ trợ tài chính, quản lý khách vay, lập hợp đồng cho vay, theo dõi chu kỳ lãi suất, quản lý nợ xấu.
                 </p>
               </div>
               <span className="inline-flex items-center text-xs font-bold text-amber-500 group-hover:translate-x-1 transition-transform mt-2">

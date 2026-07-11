@@ -29,39 +29,6 @@ interface SidebarProps {
   children: React.ReactNode
 }
 
-const menuItems = [
-  {
-    title: "Tổng quan",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Quản lý xe",
-    href: "/dashboard/vehicles",
-    icon: Car,
-  },
-  {
-    title: "Khách thuê",
-    href: "/dashboard/customers",
-    icon: Users,
-  },
-  {
-    title: "Đơn thuê",
-    href: "/dashboard/orders",
-    icon: ClipboardList,
-  },
-  {
-    title: "Bảo trì",
-    href: "/dashboard/maintenance",
-    icon: Wrench,
-  },
-  {
-    title: "Báo cáo",
-    href: "/dashboard/reports",
-    icon: FileText,
-  },
-]
-
 export function DashboardSidebar({ children }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -70,16 +37,15 @@ export function DashboardSidebar({ children }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   
-  const isPawnshop = pathname.includes("/pawnshop")
+  const isLoan = pathname.includes("/loan-management")
 
-  const currentMenuItems = isPawnshop 
+  const currentMenuItems = isLoan 
     ? [
-        { title: "Tổng thể", href: "/dashboard/pawnshop?tab=dashboard", icon: LayoutDashboard },
-        { title: "Đồ cầm", href: "/dashboard/pawnshop?tab=assets", icon: Car },
-        { title: "Khách cầm", href: "/dashboard/pawnshop?tab=customers", icon: Users },
-        { title: "Đơn cầm", href: "/dashboard/pawnshop?tab=contracts", icon: ClipboardList },
-        { title: "Lịch sử truy cập", href: "/dashboard/pawnshop?tab=history", icon: History, requireAdmin: true },
-        { title: "Sao lưu khôi phục", href: "/dashboard/pawnshop?tab=backup", icon: Settings, requireAdmin: true },
+        { title: "Tổng quan", href: "/dashboard/loan-management?tab=dashboard", icon: LayoutDashboard },
+        { title: "Khách vay", href: "/dashboard/loan-management?tab=borrowers", icon: Users },
+        { title: "Đơn vay", href: "/dashboard/loan-management?tab=agreements", icon: ClipboardList },
+        { title: "Lịch sử truy cập", href: "/dashboard/loan-management?tab=history", icon: History, requireAdmin: true },
+        { title: "Sao lưu & khôi phục", href: "/dashboard/loan-management?tab=backup", icon: Settings, requireAdmin: true },
       ]
     : [
         { title: "Tổng quan", href: "/dashboard", icon: LayoutDashboard },
@@ -163,14 +129,14 @@ export function DashboardSidebar({ children }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex items-center justify-center h-24 border-b border-purple-900">
-          <div className="relative w-[68px] h-[68px] bg-purple-900 rounded-xl overflow-hidden flex items-center justify-center border border-purple-500 shadow-md">
+          <Link href="/dashboard/selection" className="relative w-[68px] h-[68px] bg-purple-900 rounded-xl overflow-hidden flex items-center justify-center border border-purple-500 shadow-md">
             <Image
               src="/logo.jpg"
               alt="Lavie Car Rental Logo"
               fill
               className="object-contain"
             />
-          </div>
+          </Link>
         </div>
 
         {/* Navigation */}
@@ -186,13 +152,11 @@ export function DashboardSidebar({ children }: SidebarProps) {
               return true
             })
             .map((item: any) => {
-              const isActive = pathname === "/dashboard/pawnshop" && item.href === "/dashboard/pawnshop?tab=dashboard"
-                ? true
-                : (pathname === "/dashboard/pawnshop"
-                  ? (searchParams?.get("tab")
-                    ? item.href.includes(`tab=${searchParams.get("tab")}`)
-                    : item.href.includes("tab=dashboard"))
-                  : pathname === item.href)
+              const isActive = isLoan
+                ? (searchParams?.get("tab")
+                  ? item.href.includes(`tab=${searchParams.get("tab")}`)
+                  : item.href.includes("tab=dashboard"))
+                : pathname === item.href
 
               return (
                 <Link
@@ -228,8 +192,8 @@ export function DashboardSidebar({ children }: SidebarProps) {
             </button>
           )}
           
-          {/* Settings Link - Only visible to Admins, hidden in Pawnshop */}
-          {user?.role === "admin" && !isPawnshop && (
+          {/* Settings Link - Only visible to Admins, hidden in Loan System */}
+          {user?.role === "admin" && !isLoan && (
             <Link
               href="/dashboard/settings"
               onClick={() => setMobileOpen(false)}
