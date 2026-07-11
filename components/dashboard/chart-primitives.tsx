@@ -2,6 +2,7 @@
 
 export const RENTAL_CHART_PALETTE = ["#7C3AED", "#059669", "#0369A1", "#F59E0B", "#64748B"]
 export const LOAN_CHART_PALETTE = ["#7C3AED", "#EF4444", "#3B82F6", "#94A3B8", "#F59E0B"]
+export const PAWN_CHART_PALETTE = ["#D97706", "#059669", "#0369A1", "#7C6BA8", "#C2410C", "#64748B"]
 
 export function formatChartAxisValue(val: number) {
   if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}T`
@@ -21,7 +22,7 @@ export function ChartShell({
   title: string
   description: string
   icon: React.ReactNode
-  accent?: "purple" | "amber" | "emerald" | "red"
+  accent?: "purple" | "amber" | "emerald" | "red" | "rose"
   children: React.ReactNode
   headerExtra?: React.ReactNode
 }) {
@@ -32,7 +33,9 @@ export function ChartShell({
         ? "from-emerald-400 to-emerald-600"
         : accent === "red"
           ? "from-red-400 to-red-600"
-          : "from-purple-400 to-purple-600"
+          : accent === "rose"
+            ? "from-rose-400 to-rose-600"
+            : "from-purple-400 to-purple-600"
 
   return (
     <div className="relative flex flex-col overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05)] h-full">

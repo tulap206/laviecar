@@ -4,6 +4,21 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase, fetchCustomers, fetchRentals } from "@/lib/supabase"
 import { logger } from "@/lib/logger"
+import { ModulePageShell, ModuleSubpageHeader, ModuleSectionCard, ModuleResponsiveTable, ModuleMobileCard } from "@/components/dashboard/module-shell"
+import {
+  RentalKpiCard,
+  rentalTableHeadClass,
+  rentalFilterInputClass,
+  getRentalCustomerStatusLabel,
+  rentalCustomerStatusBadgeClass,
+} from "@/components/dashboard/rental-ui"
+import { cn } from "@/lib/utils"
+import {
+  EntityFormDialogContent,
+  EntityFormHeader,
+  EntityFormBody,
+  EntityFormFooter,
+} from "@/components/dashboard/entity-form-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +33,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Pencil, Trash2, User, Phone, MapPin, Eye, Upload } from "lucide-react"
+import { Plus, Search, Trash2, User, Phone, MapPin, Eye, Upload, Settings, Clock, Calendar } from "lucide-react"
 
 interface Customer {
   id: string
@@ -29,7 +44,8 @@ interface Customer {
   idcard: string
   totalrentals: number
   status: "active" | "inactive" | "renting" | "pending"
-  createdat: string
+  createdAt?: string
+  created_at?: string
   customerphoto?: string[]
   cccdfront?: string[]
   cccdback?: string[]
@@ -55,10 +71,10 @@ const ImageUploadButton = ({
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-400 hover:bg-blue-50 transition flex flex-col items-center justify-center gap-2 cursor-pointer"
+        className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-red-400 hover:bg-red-50 transition flex flex-col items-center justify-center gap-2 cursor-pointer"
       >
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <Upload className="w-6 h-6 text-blue-500" />
+        <div className="bg-red-50 p-3 rounded-lg">
+          <Upload className="w-6 h-6 text-red-600" />
         </div>
         <div className="text-center">
           <p className="text-sm font-medium text-gray-700">Thêm ảnh</p>
@@ -91,30 +107,22 @@ const ImageUploadButton = ({
   )
 }
 
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "renting":
-      return { className: "bg-blue-50 text-blue-600 border-blue-200", label: "Đang thuê" }
-    case "pending":
-      return { className: "bg-yellow-50 text-yellow-600 border-yellow-200", label: "Chờ giao xe" }
-    case "inactive":
-      return { className: "bg-gray-100 text-gray-500", label: "Ngừng hoạt động" }
-    default:
-      return { className: "bg-emerald-50 text-emerald-600 border-emerald-200", label: "Sẵn sàng" }
-  }
-}
-
 export default function CustomersPage() {
   const { user } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 15
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
+  const [rentals, setRentals] = useState<any[]>([])
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
+  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -131,11 +139,22 @@ export default function CustomersPage() {
   const loadData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true)
+
+      // Check if user is demo account (quy79)
+      const isDemoAccount = user?.username === "quy79"
+
+      if (isDemoAccount) {
+        setCustomers([])
+        setLoading(false)
+        return
+      }
+
       const [customersData, rentalsData] = await Promise.all([
         fetchCustomers(),
         fetchRentals()
       ])
-      
+      setRentals(rentalsData || [])
+
       const updated = customersData.map((customer) => {
         const activeRental = rentalsData.find(
           (rental: any) => rental.customerId === customer.id && rental.status === "active"
@@ -160,8 +179,8 @@ export default function CustomersPage() {
       })
 
       const sorted = updated.sort((a, b) => {
-        const dateA = new Date(a.createdat || a.created_at || 0).getTime()
-        const dateB = new Date(b.createdat || b.created_at || 0).getTime()
+        const dateA = new Date(a.createdAt || a.created_at || 0).getTime()
+        const dateB = new Date(b.createdAt || b.created_at || 0).getTime()
         return dateB - dateA
       })
       setCustomers(sorted)
@@ -197,6 +216,24 @@ export default function CustomersPage() {
       customer.phone.includes(searchQuery) ||
       customer.facebook.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  // Reset page when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage)
+  const paginatedCustomers = filteredCustomers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const customerStats = {
+    total: customers.length,
+    renting: customers.filter((c) => c.status === "renting").length,
+    pending: customers.filter((c) => c.status === "pending").length,
+    inactive: customers.filter((c) => c.status === "inactive").length,
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -454,8 +491,8 @@ export default function CustomersPage() {
         }
       })
       const sorted = updated.sort((a, b) => {
-        const dateA = new Date(a.createdat || a.created_at || 0).getTime()
-        const dateB = new Date(b.createdat || b.created_at || 0).getTime()
+        const dateA = new Date(a.createdAt || a.created_at || 0).getTime()
+        const dateB = new Date(b.createdAt || b.created_at || 0).getTime()
         return dateB - dateA
       })
       setCustomers(sorted)
@@ -541,7 +578,7 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <ModulePageShell module="rental">
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent className="bg-white border-gray-200 rounded-2xl max-w-sm">
@@ -578,320 +615,413 @@ export default function CustomersPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-800">Khách hàng</h1>
-          <p className="text-gray-500 text-sm">Quản lý thông tin khách hàng thuê xe</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
-              <Plus className="w-4 h-4 mr-2" />
-              Thêm khách hàng
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-white border-gray-200 rounded-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-gray-800">
-                {editingCustomer ? "Chỉnh sửa khách hàng" : "Thêm khách hàng mới"}
-              </DialogTitle>
-              <DialogDescription className="text-gray-500">
-                {editingCustomer ? "Cập nhật thông tin khách hàng" : "Nhập thông tin khách hàng mới"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-600">Họ và tên</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="VD: Nguyễn Văn A"
-                  className="bg-gray-50 border-gray-200 rounded-xl"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-gray-600">Số điện thoại</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="VD: 0901234567"
-                  className="bg-gray-50 border-gray-200 rounded-xl"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="idcard" className="text-gray-600">Số CCCD/CMND</Label>
-                <Input
-                  id="idcard"
-                  value={formData.idcard}
-                  onChange={(e) => setFormData({ ...formData, idcard: e.target.value })}
-                  placeholder="VD: 079123456789"
-                  className="bg-gray-50 border-gray-200 rounded-xl"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="facebook" className="text-gray-600">Link Facebook</Label>
-                <Input
-                  id="facebook"
-                  value={formData.facebook}
-                  onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
-                  placeholder="VD: https://facebook.com/username"
-                  className="bg-gray-50 border-gray-200 rounded-xl"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-gray-600">Địa chỉ</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="VD: 123 Nguyễn Huệ, Q.1, TP.HCM"
-                  className="bg-gray-50 border-gray-200 rounded-xl"
-                  required
-                />
-              </div>
-              
-              {/* Image Upload Section */}
-              <div className="space-y-4 pt-4 border-t border-gray-200">
-                <p className="font-medium text-gray-700">Thêm ảnh (tùy chọn)</p>
+      <ModuleSubpageHeader
+        module="rental"
+        sticky
+        title="Khách hàng"
+        subtitle="Quản lý thông tin khách hàng thuê xe"
+        breadcrumbs={[
+          { label: "Cho thuê xe", href: "/dashboard" },
+          { label: "Khách hàng" },
+        ]}
+        actions={
+          <Button
+            className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-xl"
+            onClick={() => setIsDialogOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Thêm khách hàng
+          </Button>
+        }
+      />
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <EntityFormDialogContent accent="purple" maxWidth="2xl">
+              <EntityFormHeader
+                title={editingCustomer ? "Chỉnh sửa khách hàng" : "Thêm khách hàng mới"}
+                description={editingCustomer ? "Cập nhật thông tin khách hàng" : "Nhập thông tin khách hàng mới"}
+              />
+              <form onSubmit={handleSubmit}>
+                <EntityFormBody>
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-gray-600">Họ và tên</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="VD: Nguyễn Văn A"
+                    className="bg-gray-50 border-gray-200 rounded-xl"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-gray-600">Số điện thoại</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="VD: 0901234567"
+                    className="bg-gray-50 border-gray-200 rounded-xl"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="idcard" className="text-gray-600">Số CCCD/CMND</Label>
+                  <Input
+                    id="idcard"
+                    value={formData.idcard}
+                    onChange={(e) => setFormData({ ...formData, idcard: e.target.value })}
+                    placeholder="VD: 079123456789"
+                    className="bg-gray-50 border-gray-200 rounded-xl"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="facebook" className="text-gray-600">Link Facebook</Label>
+                  <Input
+                    id="facebook"
+                    value={formData.facebook}
+                    onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
+                    placeholder="VD: https://facebook.com/username"
+                    className="bg-gray-50 border-gray-200 rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="text-gray-600">Địa chỉ</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="VD: 123 Nguyễn Huệ, Q.1, TP.HCM"
+                    className="bg-gray-50 border-gray-200 rounded-xl"
+                    required
+                  />
+                </div>
                 
-                <ImageUploadButton
-                  label="Ảnh khách hàng"
-                  preview={formData.customerphoto?.[0]}
-                  onImageSelected={(base64) => setFormData({ ...formData, customerphoto: base64 ? [base64] : [] })}
+                {/* Image Upload Section */}
+                <div className="space-y-4 pt-4 border-t border-gray-200">
+                  <p className="font-medium text-gray-700">Thêm ảnh (tùy chọn)</p>
+                  
+                  <ImageUploadButton
+                    label="Ảnh khách hàng"
+                    preview={formData.customerphoto?.[0]}
+                    onImageSelected={(base64) => setFormData({ ...formData, customerphoto: base64 ? [base64] : [] })}
+                  />
+
+                  <ImageUploadButton
+                    label="Ảnh CCCD mặt trước"
+                    preview={formData.cccdfront?.[0]}
+                    onImageSelected={(base64) => setFormData({ ...formData, cccdfront: base64 ? [base64] : [] })}
+                  />
+
+                  <ImageUploadButton
+                    label="Ảnh CCCD mặt sau"
+                    preview={formData.cccdback?.[0]}
+                    onImageSelected={(base64) => setFormData({ ...formData, cccdback: base64 ? [base64] : [] })}
+                  />
+
+                  <ImageUploadButton
+                    label="Ảnh GPLX mặt trước"
+                    preview={formData.licensefront?.[0]}
+                    onImageSelected={(base64) => setFormData({ ...formData, licensefront: base64 ? [base64] : [] })}
+                  />
+
+                  <ImageUploadButton
+                    label="Ảnh GPLX mặt sau"
+                    preview={formData.licenseback?.[0]}
+                    onImageSelected={(base64) => setFormData({ ...formData, licenseback: base64 ? [base64] : [] })}
+                  />
+                </div>
+                
+                </EntityFormBody>
+                <EntityFormFooter
+                  accent="purple"
+                  onCancel={() => { setIsDialogOpen(false); resetForm(); }}
+                  submitLabel={editingCustomer ? "Cập nhật" : "Thêm"}
                 />
+              </form>
+            </EntityFormDialogContent>
+          </Dialog>
 
-                <ImageUploadButton
-                  label="Ảnh CCCD mặt trước"
-                  preview={formData.cccdfront?.[0]}
-                  onImageSelected={(base64) => setFormData({ ...formData, cccdfront: base64 ? [base64] : [] })}
-                />
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <RentalKpiCard label="Tổng khách hàng" value={customerStats.total} sublabel={`${filteredCustomers.length} đang lọc`} />
+          <RentalKpiCard label="Đang thuê" value={customerStats.renting} sublabel="Khách đang giữ xe" valueClassName="text-red-700" />
+          <RentalKpiCard label="Chờ giao xe" value={customerStats.pending} sublabel="Đơn chờ xử lý" valueClassName="text-amber-700" />
+          <RentalKpiCard label="Ngừng hoạt động" value={customerStats.inactive} sublabel="Không giao dịch" valueClassName="text-slate-600" />
+        </div>
 
-                <ImageUploadButton
-                  label="Ảnh CCCD mặt sau"
-                  preview={formData.cccdback?.[0]}
-                  onImageSelected={(base64) => setFormData({ ...formData, cccdback: base64 ? [base64] : [] })}
-                />
-
-                <ImageUploadButton
-                  label="Ảnh GPLX mặt trước"
-                  preview={formData.licensefront?.[0]}
-                  onImageSelected={(base64) => setFormData({ ...formData, licensefront: base64 ? [base64] : [] })}
-                />
-
-                <ImageUploadButton
-                  label="Ảnh GPLX mặt sau"
-                  preview={formData.licenseback?.[0]}
-                  onImageSelected={(base64) => setFormData({ ...formData, licenseback: base64 ? [base64] : [] })}
-                />
-              </div>
-              
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }} className="rounded-xl">
-                  Hủy
-                </Button>
-                <Button type="submit" className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl">
-                  {editingCustomer ? "Cập nhật" : "Thêm"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Tìm kiếm theo tên, số điện thoại hoặc Facebook..."
-          className="pl-10 bg-white border-gray-200 rounded-xl"
-        />
-      </div>
-
-      <Card className="border-gray-200 rounded-2xl overflow-hidden">
-        <CardHeader className="bg-gray-50 border-b border-gray-200">
-          <CardTitle className="text-gray-800">Danh sách khách hàng</CardTitle>
-          <CardDescription className="text-gray-500">
-            Tổng cộng {filteredCustomers.length} khách hàng
-          </CardDescription>
-        </CardHeader>
+      <ModuleSectionCard
+        title="Danh sách khách hàng"
+        description={`Quản lý ${filteredCustomers.length} khách hàng`}
+        filters={
+          <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tên, SĐT, CCCD..."
+                className={cn(rentalFilterInputClass, "pl-9")}
+              />
+            </div>
+            <Button
+              onClick={() => { setEditingCustomer(null); resetForm(); setIsDialogOpen(true) }}
+              className="bg-red-600 hover:bg-red-700 text-white h-9 rounded-xl text-sm font-semibold shrink-0"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Thêm khách
+            </Button>
+          </div>
+        }
+      >
         <CardContent className="p-0">
           {filteredCustomers.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              Không tìm thấy khách hàng nào
+            <div className="text-center py-12">
+              <User className="w-12 h-12 text-slate-200 mx-auto mb-2" />
+              <p className="text-slate-400 text-sm">Không tìm thấy khách hàng nào</p>
             </div>
           ) : (
             <>
-              {/* Desktop Table View */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Khách hàng</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Liên hệ</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">CCCD</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Địa chỉ</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Trạng thái</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-600">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCustomers.map((customer) => (
-                      <tr key={customer.id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            {customer.customerphoto && customer.customerphoto.length > 0 ? (
-                              <img src={customer.customerphoto[0]} alt={customer.name} className="w-8 h-8 rounded-full object-cover" />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <User className="w-4 h-4 text-gray-400" />
-                              </div>
-                            )}
-                            <span className="font-medium text-gray-800">{customer.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm text-gray-700">
-                              <Phone className="w-3 h-3 text-gray-400" />
-                              {customer.phone}
-                            </div>
-                            <a href={customer.facebook} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
-                              Facebook
-                            </a>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 font-mono text-sm text-gray-700">{customer.idcard}</td>
-                        <td className="py-3 px-4 text-sm text-gray-700">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-3 h-3 text-gray-400" />
-                            {customer.address}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge className={getStatusBadge(customer.status).className}>
-                            {getStatusBadge(customer.status).label}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => { setViewingCustomer(customer); setIsDetailDialogOpen(true); }} className="text-gray-600 hover:text-gray-900">
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleEdit(customer)} className="text-gray-600 hover:text-gray-900">
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDelete(customer.id)} className="text-red-600 hover:text-red-900">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
+              <ModuleResponsiveTable
+                desktop={
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="module-table-head border-b border-slate-100 bg-slate-50/50">
+                        <th className={cn(rentalTableHeadClass, "w-12 text-center")}>STT</th>
+                        <th className={rentalTableHeadClass}>Khách hàng</th>
+                        <th className={cn(rentalTableHeadClass, "text-center")}>Liên hệ</th>
+                        <th className={cn(rentalTableHeadClass, "text-center")}>CCCD</th>
+                        <th className={rentalTableHeadClass}>Địa chỉ</th>
+                        <th className={cn(rentalTableHeadClass, "text-center")}>Trạng thái</th>
+                        <th className={cn(rentalTableHeadClass, "text-right")}>Thao tác</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile Card View */}
-              <div className="md:hidden divide-y divide-gray-100">
-                {filteredCustomers.map((customer) => (
-                  <div 
-                    key={customer.id} 
-                    className="flex gap-3 py-4 px-2 first:pt-2 last:pb-2"
-                  >
-                    {/* Customer Avatar */}
-                    <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden mt-0.5">
-                      {customer.customerphoto && customer.customerphoto.length > 0 ? (
-                        <img src={customer.customerphoto[0]} alt={customer.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-blue-100 flex items-center justify-center">
-                          <User className="w-6 h-6 text-blue-500" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Customer Info - Left Section */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-2">
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 text-sm text-slate-700">
+                      {paginatedCustomers.map((customer, index) => (
+                        <tr key={customer.id} className="module-table-row hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3.5 px-4 text-center text-xs text-slate-400 font-medium">
+                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              {customer.customerphoto && customer.customerphoto.length > 0 ? (
+                                <img src={customer.customerphoto[0]} alt={customer.name} className="w-8 h-8 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                                  <User className="w-4 h-4 text-slate-500" />
+                                </div>
+                              )}
+                              <span className="font-semibold text-slate-800 capitalize">{customer.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="space-y-1 inline-flex flex-col items-center">
+                              <div className="flex items-center gap-2 text-sm text-slate-700 font-semibold font-mono">
+                                <Phone className="w-3 h-3 text-slate-500" />
+                                {customer.phone}
+                              </div>
+                              {customer.facebook && (
+                                <a href={customer.facebook} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline font-semibold">
+                                  Facebook
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-semibold font-mono text-sm text-slate-700">{customer.idcard || <span className="text-slate-400 font-normal">—</span>}</td>
+                          <td className="py-3.5 px-4 text-sm text-slate-700">
+                            {customer.address ? (
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-3 h-3 text-slate-500 flex-shrink-0" />
+                                <span className="truncate max-w-[200px] font-medium">{customer.address}</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${rentalCustomerStatusBadgeClass(customer.status)}`}>
+                              {getRentalCustomerStatusLabel(customer.status)}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+                                onClick={() => { setHistoryCustomer(customer); setIsHistoryDialogOpen(true) }}
+                                title="Lịch sử thuê"
+                              >
+                                <Clock className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+                                onClick={() => { setViewingCustomer(customer); setIsDetailDialogOpen(true) }}
+                                title="Chi tiết"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+                                onClick={() => handleEdit(customer)}
+                                title="Chỉnh sửa"
+                              >
+                                <Settings className="w-3.5 h-3.5" />
+                              </Button>
+                              {user?.permissions.canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50"
+                                  onClick={() => handleDelete(customer.id)}
+                                  title="Xóa"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                }
+                mobile={paginatedCustomers.map((customer) => (
+                  <ModuleMobileCard key={customer.id}>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {customer.customerphoto && customer.customerphoto.length > 0 ? (
+                          <img src={customer.customerphoto[0]} alt={customer.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                            <User className="w-4 h-4 text-red-600" />
+                          </div>
+                        )}
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-gray-800 text-base">{customer.name}</h3>
-                        </div>
-                        <span
-                          className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-                            getStatusBadge(customer.status).className
-                          }`}
-                        >
-                          {getStatusBadge(customer.status).label}
-                        </span>
-                      </div>
-                      
-                      {/* Contact Info Grid */}
-                      <div className="grid grid-cols-2 gap-2 mb-2">
-                        {/* Phone */}
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span className="text-gray-700 font-medium truncate">{customer.phone}</span>
-                        </div>
-                        
-                        {/* CCCD */}
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <span className="text-xs text-gray-500 font-mono truncate">{customer.idcard}</span>
+                          <p className="font-semibold text-slate-800 truncate">{customer.name}</p>
+                          <p className="text-xs text-slate-500 font-mono">{customer.phone}</p>
                         </div>
                       </div>
-                      
-                      {/* Address */}
-                      <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                        <MapPin className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">{customer.address}</span>
-                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${rentalCustomerStatusBadgeClass(customer.status)}`}>
+                        {getRentalCustomerStatusLabel(customer.status)}
+                      </span>
                     </div>
-                    
-                    {/* Actions - Right Section */}
-                    <div className="flex-shrink-0 flex flex-col gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-blue-500 hover:bg-blue-50"
-                        onClick={() => { setViewingCustomer(customer); setIsDetailDialogOpen(true); }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-amber-500 hover:bg-amber-50"
-                        onClick={() => handleEdit(customer)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                        onClick={() => handleDelete(customer.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                    {customer.address && (
+                      <p className="text-xs text-slate-500 truncate flex items-center gap-1">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        {customer.address}
+                      </p>
+                    )}
+                  </ModuleMobileCard>
                 ))}
-              </div>
+              />
+              {totalPages > 1 && (
+                <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-100">
+                  <span className="text-xs text-slate-500 mr-2">
+                    Trang {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs border-slate-200 rounded-xl"
+                  >
+                    Trước
+                  </Button>
+                  <Button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs border-slate-200 rounded-xl"
+                  >
+                    Tiếp
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </CardContent>
-      </Card>
+      </ModuleSectionCard>
+      </div>
+
+      {/* #12 Customer rental history dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <EntityFormDialogContent accent="purple" maxWidth="2xl">
+          <EntityFormHeader
+            title={`Lịch sử thuê — ${historyCustomer?.name ?? ""}`}
+            description="Tất cả các đơn thuê xe của khách hàng này"
+          />
+          {historyCustomer && (() => {
+            const cRentals = rentals.filter(r => r.customerId === historyCustomer.id)
+              .sort((a, b) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime())
+            const totalRev = cRentals.filter(r => r.status === "completed").reduce((s: number, r: any) => s + (r.revenue || r.totalPrice || 0), 0)
+            const totalSpend = cRentals.reduce((s: number, r: any) => s + (r.totalPrice || 0), 0)
+            return (
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-50 rounded-xl p-3 text-center">
+                    <p className="text-xs text-slate-500">Tổng đơn</p>
+                    <p className="text-lg font-extrabold text-slate-800">{cRentals.length}</p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-xl p-3 text-center">
+                    <p className="text-xs text-emerald-600">Đã hoàn thành</p>
+                    <p className="text-lg font-extrabold text-emerald-700">{cRentals.filter(r => r.status === "completed").length}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-xl p-3 text-center">
+                    <p className="text-xs text-red-500">Tổng doanh thu</p>
+                    <p className="text-sm font-extrabold text-red-700 tabular-nums">{totalRev.toLocaleString("vi-VN")}đ</p>
+                  </div>
+                </div>
+                {cRentals.length === 0 ? (
+                  <p className="text-center text-slate-400 py-8 text-sm">Khách hàng chưa có đơn thuê nào</p>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {cRentals.map(r => {
+                      const statusColor = r.status === "completed" ? "text-emerald-700 bg-emerald-50 border-emerald-100" : r.status === "cancelled" ? "text-slate-500 bg-slate-50 border-slate-100" : r.status === "active" ? "text-red-700 bg-red-50 border-red-100" : "text-amber-700 bg-amber-50 border-amber-100"
+                      const statusLabel = { pending: "Chờ giao", active: "Đang thuê", completed: "Hoàn thành", cancelled: "Đã hủy" }[r.status as string] || r.status
+                      return (
+                        <div key={r.id} className="py-3 space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-slate-800 text-sm">{r.vehicleName}</p>
+                              <p className="text-xs text-slate-400 font-mono">{r.licensePlate}</p>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${statusColor}`}>{statusLabel}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Calendar className="w-3 h-3 shrink-0" />
+                            <span>{r.startDate} → {r.endDate} · {r.totalDays} ngày</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-slate-500">{(r.pricePerDay || 0).toLocaleString("vi-VN")}đ/ngày · Cọc {(r.deposit || 0).toLocaleString("vi-VN")}đ</span>
+                            <span className={`font-bold tabular-nums ${r.status === "completed" ? "text-emerald-600" : "text-slate-600"}`}>
+                              {r.status === "completed" ? `+${(r.revenue || r.totalPrice || 0).toLocaleString("vi-VN")}đ` : `${(r.totalPrice || 0).toLocaleString("vi-VN")}đ`}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </EntityFormDialogContent>
+      </Dialog>
 
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="bg-white border-gray-200 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-gray-800">Chi tiết khách hàng</DialogTitle>
-            <DialogDescription className="text-gray-500">Thông tin chi tiết của khách hàng trong hệ thống</DialogDescription>
-          </DialogHeader>
+        <EntityFormDialogContent accent="purple" maxWidth="2xl">
+          <EntityFormHeader
+            title="Chi tiết khách hàng"
+            description="Thông tin chi tiết của khách hàng trong hệ thống"
+          />
           {viewingCustomer && (
             <div className="space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
@@ -909,7 +1039,7 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Facebook</p>
-                  <a href={viewingCustomer.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
+                  <a href={viewingCustomer.facebook} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline text-sm">
                     Xem profile
                   </a>
                 </div>
@@ -919,8 +1049,8 @@ export default function CustomersPage() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Trạng thái</p>
-                  <Badge className={getStatusBadge(viewingCustomer.status).className}>
-                    {getStatusBadge(viewingCustomer.status).label}
+                  <Badge className={`rounded-full border ${rentalCustomerStatusBadgeClass(viewingCustomer.status)}`}>
+                    {getRentalCustomerStatusLabel(viewingCustomer.status)}
                   </Badge>
                 </div>
                 <div>
@@ -970,8 +1100,8 @@ export default function CustomersPage() {
               </div>
             </div>
           )}
-        </DialogContent>
+        </EntityFormDialogContent>
       </Dialog>
-    </div>
+    </ModulePageShell>
   )
 }
