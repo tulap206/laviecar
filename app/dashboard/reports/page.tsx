@@ -667,55 +667,49 @@ export default function ReportsPage() {
       title: "Doanh Thu",
       value: `${reportData.totalRevenue.toLocaleString("vi-VN")} đ`,
       change: `${reportData.totalRentals} đơn`,
-      icon: DollarSign,
-      iconBg: "bg-amber-50",
-      iconColor: "text-amber-500",
-      accent: "blue" as const,
+      icon: <DollarSign className="w-4 h-4" />,
+      watermark: <DollarSign className="w-20 h-20" />,
+      accent: "purple" as const,
     },
     {
       title: "Lợi Nhuận",
       value: `${reportData.totalProfit.toLocaleString("vi-VN")} đ`,
       change: `${reportData.totalProfit > 0 ? "↑" : "↓"} LN`,
-      icon: TrendingUp,
-      iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-500",
-      accent: "blue" as const,
+      icon: <TrendingUp className="w-4 h-4" />,
+      watermark: <TrendingUp className="w-20 h-20" />,
+      accent: "purple" as const,
     },
     {
       title: "Tiền Quỹ Còn Lại",
       value: `${cashOnHand.toLocaleString("vi-VN")} đ`,
       change: "số dư quỹ tích lũy",
-      icon: Wallet,
-      iconBg: "bg-indigo-50",
-      iconColor: "text-indigo-500",
-      accent: "blue" as const,
+      icon: <Wallet className="w-4 h-4" />,
+      watermark: <Wallet className="w-20 h-20" />,
+      accent: "purple" as const,
     },
     {
       title: "Tổng Xe",
       value: reportData.totalVehicles.toString(),
       change: `${reportData.activeRentals} đang thuê`,
-      icon: Bike,
-      iconBg: "bg-blue-50",
-      iconColor: "text-blue-500",
-      accent: "blue" as const,
+      icon: <Bike className="w-4 h-4" />,
+      watermark: <Bike className="w-20 h-20" />,
+      accent: "purple" as const,
     },
     {
       title: "Tổng Khách",
       value: reportData.totalCustomers.toString(),
       change: `${reportData.totalRentals} lượt thuê`,
-      icon: Users,
-      iconBg: "bg-purple-50",
-      iconColor: "text-purple-500",
-      accent: "blue" as const,
+      icon: <Users className="w-4 h-4" />,
+      watermark: <Users className="w-20 h-20" />,
+      accent: "purple" as const,
     },
     {
       title: "Tổng Đơn",
       value: reportData.totalRentals.toString(),
       change: `${reportData.activeRentals} đang thuê`,
-      icon: ClipboardList,
-      iconBg: "bg-rose-50",
-      iconColor: "text-rose-500",
-      accent: "blue" as const,
+      icon: <ClipboardList className="w-4 h-4" />,
+      watermark: <ClipboardList className="w-20 h-20" />,
+      accent: "purple" as const,
     },
   ]
 
@@ -876,14 +870,17 @@ export default function ReportsPage() {
       </Dialog>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
         {stats.map((stat, idx) => (
           <ModuleKpiCard
             key={idx}
             accent={stat.accent as any}
+            variant="hero"
             label={stat.title}
             value={stat.value}
             sublabel={stat.change}
+            icon={stat.icon}
+            watermark={stat.watermark}
             onClick={() => {
               if (stat.title === "Tổng Xe") router.push("/dashboard/vehicles")
               if (stat.title === "Tổng Khách") router.push("/dashboard/customers")
