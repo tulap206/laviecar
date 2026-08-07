@@ -2811,25 +2811,7 @@ export default function PawnshopDashboard() {
           </DialogHeader>
 
           {selectedContract && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3">
-              {/* Left Column: VietQR dynamic invoice */}
-              <div className="flex flex-col items-center justify-center bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Mã thanh toán VietQR động</p>
-                {qrString ? (
-                  <div className="relative w-48 h-48 bg-white p-2 rounded-xl shadow-md border border-slate-100 flex items-center justify-center">
-                    <img src={qrString} alt="VietQR Payment Dynamic Code" className="w-full h-full object-contain" />
-                  </div>
-                ) : (
-                  <div className="w-48 h-48 bg-slate-200 animate-pulse rounded-xl" />
-                )}
-                <div className="mt-4 space-y-1">
-                  <p className="text-[10px] text-slate-400">Nội dung chuyển khoản chuẩn hóa:</p>
-                  <p className="font-mono font-bold text-slate-800 text-xs px-2.5 py-1 bg-amber-500/10 text-amber-600 rounded-lg inline-block">
-                    {paymentForm.description}
-                  </p>
-                </div>
-              </div>
-
+            <div className="flex flex-col gap-6 pt-3">
               {/* Right Column: Manual Invoice form */}
               <form onSubmit={handleRecordPayment} className="space-y-4">
                 {selectedContract.notes?.includes("[Cắt lãi trước:") && (

@@ -1794,23 +1794,7 @@ export default function OrdersPage() {
                     </div>
                   )}
 
-                  <div className="bg-slate-950 text-white rounded-xl p-4 flex flex-col items-center gap-2">
-                    <div className="flex items-center justify-between w-full border-b border-slate-800 pb-2">
-                      <span className="text-sm bg-blue-600 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                        QR TECHCOMBANK
-                      </span>
-                      <span className="text-sm text-slate-400">{LAVIECAR_BUSINESS.hotline}</span>
-                    </div>
-                    <div className="w-36 h-36 bg-white p-1.5 rounded-lg overflow-hidden shadow-md">
-                      <img
-                        src={`https://img.vietqr.io/image/TCB-${LAVIECAR_BUSINESS.bank.accountNumber}-qr_only.png?amount=${o.totalPrice + (o.extraFees || 0)}&addInfo=${encodeURIComponent(`TT LAVIECAR ${o.rentalCode || o.id}`)}&accountName=${encodeURIComponent(LAVIECAR_BUSINESS.bank.accountHolderLatin)}`}
-                        alt="VietQR"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <p className="font-bold text-blue-400 text-sm tabular-nums">{formatPrice(o.totalPrice + (o.extraFees || 0))}</p>
-                    <p className="text-sm text-slate-400 text-center">Quét QR để thanh toán cọc / tất toán</p>
-                  </div>
+
 
                   <div className="flex gap-2 pt-1 flex-wrap">
                     {o.status === "pending" && (
