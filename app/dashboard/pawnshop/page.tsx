@@ -1711,7 +1711,7 @@ export default function PawnshopDashboard() {
                    <BarChart data={reportsData.interestChartData}>
                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                     <YAxis tick={{ fontSize: 11 }} formatter={(val: any) => formatPrice(val)} />
+                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(val: any) => formatPrice(val)} />
                      <RechartsTooltip formatter={(val: any) => formatPrice(val)} />
                      <Bar dataKey="interest" fill="#10b981" radius={[4, 4, 0, 0]} />
                    </BarChart>
@@ -2202,7 +2202,7 @@ export default function PawnshopDashboard() {
                     <BarChart data={reportsData.interestChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} formatter={(val: any) => formatPrice(val)} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(val: any) => formatPrice(val)} />
                       <RechartsTooltip formatter={(val: any) => formatPrice(val)} />
                       <Bar dataKey="interest" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
