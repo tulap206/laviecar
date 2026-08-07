@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase, fetchVehicles, fetchRentals } from "@/lib/supabase"
@@ -1038,7 +1038,7 @@ export default function VehiclesPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50 text-sm text-slate-700">
-                      {paginatedVehicles.map((vehicle, index) => (
+                      {paginatedVehicles.map((vehicle: Vehicle, index: number) => (
                         <tr key={vehicle.id} className="module-table-row hover:bg-slate-50/50 transition-colors">
                           <td className="py-3.5 px-4 text-center text-xs text-slate-400 font-medium">
                             {(currentPage - 1) * itemsPerPage + index + 1}
@@ -1148,7 +1148,7 @@ export default function VehiclesPage() {
                     </tbody>
                   </table>
                 }
-                mobile={paginatedVehicles.map((vehicle) => (
+                mobile={paginatedVehicles.map((vehicle: Vehicle) => (
                   <ModuleMobileCard key={vehicle.id}>
                     <div className="flex justify-between items-start gap-2">
                       <div>
