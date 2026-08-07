@@ -56,7 +56,7 @@ import {
   rentalVehicleStatusBadgeClass,
 } from "@/components/dashboard/rental-ui"
 import { cn } from "@/lib/utils"
-import { Plus, Search, Eye, ClipboardList, Calendar, User, Car, Settings, X, ImageIcon, Phone, MapPin, Trash2, Printer, FileText, Play, CheckCircle, DollarSign } from "lucide-react"
+import { Plus, Search, Eye, ClipboardList, Calendar, User, Car, Settings, X, ImageIcon, Phone, MapPin, Trash2, Printer, FileText, Play, CheckCircle, DollarSign, AlertCircle } from "lucide-react"
 import { LAVIECAR_BUSINESS } from "@/lib/business-info"
 import { PrintBusinessHeader, PrintShopPartyBlock } from "@/components/dashboard/print-business-blocks"
 import {
