@@ -4,6 +4,14 @@ import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { DashboardSidebar } from "@/components/dashboard-sidebar"
+import { RentalDataProvider } from "@/contexts/rental-data-context"
+
+const RENTAL_PATHS = [
+  "/dashboard/vehicles",
+  "/dashboard/customers",
+  "/dashboard/orders",
+  "/dashboard/maintenance",
+]
 
 export default function DashboardLayout({
   children,
@@ -38,5 +46,15 @@ export default function DashboardLayout({
     return <div className="min-h-screen bg-slate-950 text-slate-100">{children}</div>
   }
 
-  return <DashboardSidebar>{children}</DashboardSidebar>
+  const isRentalPath = RENTAL_PATHS.some((p) => pathname.startsWith(p))
+
+  return (
+    <DashboardSidebar>
+      {isRentalPath ? (
+        <RentalDataProvider>{children}</RentalDataProvider>
+      ) : (
+        children
+      )}
+    </DashboardSidebar>
+  )
 }
