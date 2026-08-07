@@ -5,7 +5,7 @@ import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTit
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-export type EntityFormAccent = "purple" | "amber"
+export type EntityFormAccent = "purple" | "amber" | "blue" | "indigo"
 
 const accentMap: Record<EntityFormAccent, { stripe: string; btn: string }> = {
   purple: {
@@ -15,6 +15,14 @@ const accentMap: Record<EntityFormAccent, { stripe: string; btn: string }> = {
   amber: {
     stripe: "from-amber-400 to-amber-600",
     btn: "bg-amber-400 hover:bg-amber-500 text-purple-950",
+  },
+  blue: {
+    stripe: "from-blue-400 to-blue-600",
+    btn: "bg-blue-600 hover:bg-blue-700 text-white",
+  },
+  indigo: {
+    stripe: "from-indigo-400 to-indigo-600",
+    btn: "bg-indigo-600 hover:bg-indigo-700 text-white",
   },
 }
 
