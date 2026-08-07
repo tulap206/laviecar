@@ -57,7 +57,7 @@ import {
 } from "@/components/dashboard/rental-ui"
 import { cn } from "@/lib/utils"
 import { Plus, Search, Eye, ClipboardList, Calendar, User, Car, Settings, X, ImageIcon, Phone, MapPin, Trash2, Printer, FileText, Play, CheckCircle, DollarSign } from "lucide-react"
-import { QUY79_BUSINESS } from "@/lib/business-info"
+import { LAVIECAR_BUSINESS } from "@/lib/business-info"
 import { PrintBusinessHeader, PrintShopPartyBlock } from "@/components/dashboard/print-business-blocks"
 import {
   type RentalTerm,
@@ -1797,13 +1797,13 @@ export default function OrdersPage() {
                   <div className="bg-slate-950 text-white rounded-xl p-4 flex flex-col items-center gap-2">
                     <div className="flex items-center justify-between w-full border-b border-slate-800 pb-2">
                       <span className="text-sm bg-blue-600 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                        QR SHB
+                        QR TECHCOMBANK
                       </span>
-                      <span className="text-sm text-slate-400">{QUY79_BUSINESS.hotline}</span>
+                      <span className="text-sm text-slate-400">{LAVIECAR_BUSINESS.hotline}</span>
                     </div>
                     <div className="w-36 h-36 bg-white p-1.5 rounded-lg overflow-hidden shadow-md">
                       <img
-                        src={`https://img.vietqr.io/image/SHB-${QUY79_BUSINESS.bank.accountNumber}-qr_only.png?amount=${o.totalPrice + (o.extraFees || 0)}&addInfo=${encodeURIComponent(`TT 3L MOTO ${o.rentalCode || o.id}`)}&accountName=${encodeURIComponent(QUY79_BUSINESS.bank.accountHolderLatin)}`}
+                        src={`https://img.vietqr.io/image/TCB-${LAVIECAR_BUSINESS.bank.accountNumber}-qr_only.png?amount=${o.totalPrice + (o.extraFees || 0)}&addInfo=${encodeURIComponent(`TT LAVIECAR ${o.rentalCode || o.id}`)}&accountName=${encodeURIComponent(LAVIECAR_BUSINESS.bank.accountHolderLatin)}`}
                         alt="VietQR"
                         className="w-full h-full object-contain"
                       />
@@ -2192,9 +2192,9 @@ export default function OrdersPage() {
             const calcUtil = (days: number) => {
               const today = new Date(); today.setHours(0, 0, 0, 0)
               const from = new Date(); from.setDate(today.getDate() - days); from.setHours(0, 0, 0, 0)
-              const vOrders = orders.filter((o) => o.vehicleId === vId && o.status !== "cancelled" && o.status !== "pending")
+              const vOrders = orders.filter((o: any) => o.vehicleId === vId && o.status !== "cancelled" && o.status !== "pending")
               let rented = 0
-              vOrders.forEach((o) => {
+              vOrders.forEach((o: any) => {
                 const s = parseVN(o.startDate); const e = parseVN(o.endDate)
                 const os = s < from ? from : s; const oe = e > today ? today : e
                 if (os <= oe) {
@@ -2205,10 +2205,10 @@ export default function OrdersPage() {
               return { pct: Math.round((rented / days) * 100) }
             }
             const u30 = calcUtil(30)
-            const totalRentalCount = orders.filter((o) => o.vehicleId === vId).length
+            const totalRentalCount = orders.filter((o: any) => o.vehicleId === vId).length
             const recentOrders = orders
-              .filter((o) => o.vehicleId === vId)
-              .sort((a, b) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime())
+              .filter((o: any) => o.vehicleId === vId)
+              .sort((a: any, b: any) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime())
               .slice(0, 4)
 
             return (
@@ -2295,7 +2295,7 @@ export default function OrdersPage() {
                     <div>
                       <p className="text-sm font-semibold text-slate-500 uppercase mb-2">Đơn thuê gần đây</p>
                       <div className="space-y-1.5">
-                        {recentOrders.map((o) => (
+                        {recentOrders.map((o: any) => (
                           <div key={o.id} className="flex items-center justify-between text-sm bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 gap-2">
                             <span className="font-bold text-slate-700 truncate">{o.customerName}</span>
                             <span className="text-slate-400 shrink-0">{formatDisplayDate(o.startDate)}</span>
@@ -2395,8 +2395,8 @@ export default function OrdersPage() {
           </DialogHeader>
 
           {printingOrder && (() => {
-            const cust = customers.find(c => c.id === printingOrder.customerId)
-            const veh = vehicles.find(v => v.id === printingOrder.vehicleId)
+            const cust = customers.find((c: any) => c.id === printingOrder.customerId)
+            const veh = vehicles.find((v: any) => v.id === printingOrder.vehicleId)
             
             return (
               <div id="print-area" className="bg-white p-8 border border-slate-200 rounded-xl shadow-sm max-w-[21cm] mx-auto text-slate-900 font-sans print:border-none print:shadow-none print:p-0 print:mx-0">
@@ -2541,7 +2541,7 @@ export default function OrdersPage() {
 
       {/* #4 Late fee dialog */}
       <Dialog open={isLateFeeOpen} onOpenChange={setIsLateFeeOpen}>
-        <EntityFormDialogContent accent="blue" maxWidth="sm">
+        <EntityFormDialogContent accent="purple" maxWidth="md">
           <EntityFormHeader title="Phí phát sinh quá hạn" description="Đơn thuê quá hạn - nhập phí phát sinh thêm (nếu có) trước khi hoàn thành" />
           <div className="p-4 space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 font-medium">
