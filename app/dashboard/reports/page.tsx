@@ -92,6 +92,8 @@ export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
+  const [fleetPage, setFleetPage] = useState(1)
+  const fleetItemsPerPage = 10
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
   const [isEditTransactionOpen, setIsEditTransactionOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
@@ -1042,48 +1044,66 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {reportData.fleetPerformance.length > 0 ? (
-                  reportData.fleetPerformance.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-3 font-semibold text-slate-800">{item.name}</td>
-                      <td className="p-3 text-slate-500 tabular-nums">{item.licensePlate}</td>
-                      <td className="p-3 text-center text-slate-700 font-medium tabular-nums">{item.activeDays} ngày</td>
-                      <td className="p-3 text-right font-bold text-emerald-600 tabular-nums">{item.revenue.toLocaleString("vi-VN")} đ</td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-12 bg-slate-100 rounded-full h-1.5 hidden sm:block">
-                            <div 
-                              className={`h-1.5 rounded-full ${
-                                item.utilizationRate >= 70 
-                                  ? 'bg-emerald-500' 
-                                  : item.utilizationRate >= 40 
-                                    ? 'bg-amber-500' 
-                                    : 'bg-blue-500'
-                              }`}
-                              style={{ width: `${item.utilizationRate}%` }}
-                            />
+                {(() => {
+                  const totalFleetItems = reportData.fleetPerformance.length
+                  const totalFleetPages = Math.ceil(totalFleetItems / fleetItemsPerPage)
+                  const startIdx = (fleetPage - 1) * fleetItemsPerPage
+                  const paginatedFleet = reportData.fleetPerformance.slice(startIdx, startIdx + fleetItemsPerPage)
+
+                  if (paginatedFleet.length > 0) {
+                    return paginatedFleet.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-3 font-semibold text-slate-800">{item.name}</td>
+                        <td className="p-3 text-slate-500 tabular-nums">{item.licensePlate}</td>
+                        <td className="p-3 text-center text-slate-700 font-medium tabular-nums">{item.activeDays} ngày</td>
+                        <td className="p-3 text-right font-bold text-emerald-600 tabular-nums">{item.revenue.toLocaleString("vi-VN")} đ</td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-12 bg-slate-100 rounded-full h-1.5 hidden sm:block">
+                              <div 
+                                className={`h-1.5 rounded-full ${
+                                  item.utilizationRate >= 70 
+                                    ? 'bg-emerald-500' 
+                                    : item.utilizationRate >= 40 
+                                      ? 'bg-amber-500' 
+                                      : 'bg-blue-500'
+                                }`}
+                                style={{ width: `${item.utilizationRate}%` }}
+                              />
+                            </div>
+                            <span className={`font-semibold tabular-nums ${
+                              item.utilizationRate >= 70 
+                                ? 'text-emerald-600' 
+                                : item.utilizationRate >= 40 
+                                  ? 'text-amber-600' 
+                                  : 'text-blue-600'
+                            }`}>
+                              {item.utilizationRate}%
+                            </span>
                           </div>
-                          <span className={`font-semibold tabular-nums ${
-                            item.utilizationRate >= 70 
-                              ? 'text-emerald-600' 
-                              : item.utilizationRate >= 40 
-                                ? 'text-amber-600' 
-                                : 'text-blue-600'
-                          }`}>
-                            {item.utilizationRate}%
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="p-4 text-center text-slate-400">Không có dữ liệu đội xe</td>
-                  </tr>
-                )}
+                        </td>
+                      </tr>
+                    ))
+                  } else {
+                    return (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-slate-400">Không có dữ liệu đội xe</td>
+                      </tr>
+                    )
+                  }
+                })()}
               </tbody>
             </table>
           </div>
+          {reportData.fleetPerformance.length > fleetItemsPerPage && (
+            <ModulePagination
+              page={fleetPage}
+              totalPages={Math.ceil(reportData.fleetPerformance.length / fleetItemsPerPage)}
+              totalItems={reportData.fleetPerformance.length}
+              onPageChange={(p) => setFleetPage(p)}
+              itemLabel="xe"
+            />
+          )}
         </CardContent>
       </Card>
 
