@@ -606,7 +606,7 @@ export default function CustomersPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
-              className="bg-blue-600 text-white hover:bg-blue-700 rounded-[var(--radius-control)] h-11 font-semibold text-body ui-transition"
+              className="bg-purple-900 text-white hover:bg-purple-950 rounded-xl"
               onClick={() => { setEditingCustomer(null); resetForm(); setIsDialogOpen(true) }}
             >
               <Plus className="w-4 h-4 mr-2" />
