@@ -322,16 +322,25 @@ export default function DashboardPage() {
   const [txDeleteConfirmOpen, setTxDeleteConfirmOpen] = useState(false)
   const [txToDelete, setTxToDelete] = useState<any | null>(null)
   
+  // Search & Pagination states for transactions matching 3lmoto
+  const [txSearchQuery, setTxSearchQuery] = useState("")
+  const [txCurrentPage, setTxCurrentPage] = useState(1)
+  const txItemsPerPage = 10
+
   const [txFormData, setTxFormData] = useState({
     type: "income",
     description: "",
     amount: "",
+    isCapital: false,
+    timestamp: new Date().toLocaleDateString('en-CA'), // default today format YYYY-MM-DD
   })
   
   const [txEditFormData, setTxEditFormData] = useState({
     type: "income",
     description: "",
     amount: "",
+    isCapital: false,
+    timestamp: "",
   })
   
   const loadDashboardData = useCallback(async (showLoading = true) => {
@@ -598,17 +607,26 @@ export default function DashboardPage() {
     e.preventDefault()
     if (!txFormData.description || !txFormData.amount || !user) return
 
+    const isCapital = txFormData.isCapital
+    const cleanedDesc = txFormData.description.replace(/^\s*\[vốn\]\s*/i, "").trim()
+    const description = isCapital ? `[vốn] ${cleanedDesc}` : cleanedDesc
+
+    // Lấy ngày giao dịch tự chọn hoặc mặc định ngày giờ hiện tại
+    const timestamp = txFormData.timestamp 
+      ? new Date(txFormData.timestamp + "T12:00:00").toISOString() 
+      : new Date().toISOString()
+
     try {
       const newTx = await insertTransaction({
         type: txFormData.type as "income" | "expense",
-        description: txFormData.description,
+        description,
         amount: parseMoneyInput(txFormData.amount),
         user: user.username,
-        timestamp: new Date().toISOString(),
+        timestamp,
       })
       
       setTransactions([newTx, ...transactions])
-      setTxFormData({ type: "income", description: "", amount: "" })
+      setTxFormData({ type: "income", description: "", amount: "", isCapital: false, timestamp: new Date().toLocaleDateString('en-CA') })
       setIsAddTxOpen(false)
       
       // Reload stats/report data
@@ -621,7 +639,7 @@ export default function DashboardPage() {
             displayname: user.displayName || user.username,
             action: "Thêm mới",
             module: "Thu/Chi",
-            details: `${txFormData.type === "income" ? "Thu" : "Chi"}: ${txFormData.description}`,
+            details: `${txFormData.type === "income" ? "Thu" : "Chi"}: ${description}`,
             timestamp: new Date().toISOString()
           })
         } catch (logError) {
@@ -674,8 +692,10 @@ export default function DashboardPage() {
     setEditingTx(tx)
     setTxEditFormData({
       type: tx.type,
-      description: tx.description,
+      description: (tx.description || "").replace(/^\s*\[vốn\]\s*/i, ""),
       amount: tx.amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'),
+      isCapital: isCapitalTransaction(tx),
+      timestamp: new Date(tx.timestamp || tx.created_at || new Date()).toLocaleDateString('en-CA'),
     })
     setIsEditTxOpen(true)
   }
@@ -683,14 +703,21 @@ export default function DashboardPage() {
   const handleConfirmEditTx = async () => {
     if (!editingTx || !txEditFormData.description || !txEditFormData.amount) return
     const parsedAmount = parseMoneyInput(txEditFormData.amount)
+    const cleanedDesc = txEditFormData.description.replace(/^\s*\[vốn\]\s*/i, "").trim()
+    const description = txEditFormData.isCapital ? `[vốn] ${cleanedDesc}` : cleanedDesc
+    const timestamp = txEditFormData.timestamp 
+      ? new Date(txEditFormData.timestamp + "T12:00:00").toISOString() 
+      : editingTx.timestamp
+
     try {
       await updateTransaction(editingTx.id, {
         type: txEditFormData.type as "income" | "expense",
-        description: txEditFormData.description,
+        description,
         amount: parsedAmount,
+        timestamp,
       })
       
-      setTransactions(transactions.map(t => t.id === editingTx.id ? { ...t, type: txEditFormData.type, description: txEditFormData.description, amount: parsedAmount } : t))
+      setTransactions(transactions.map(t => t.id === editingTx.id ? { ...t, type: txEditFormData.type, description, amount: parsedAmount, timestamp } : t))
       setIsEditTxOpen(false)
       setEditingTx(null)
       await loadDashboardData(false)
@@ -701,7 +728,7 @@ export default function DashboardPage() {
           displayname: user.displayName || user.username,
           action: "Chỉnh sửa",
           module: "Thu/Chi",
-          details: `Sửa: ${txEditFormData.description}`,
+          details: `Sửa: ${description}`,
           timestamp: new Date().toISOString()
         })
       }
@@ -886,118 +913,261 @@ export default function DashboardPage() {
           <CommissionHomeReportPanel rows={thisMonthKpis.commissionReport} formatPrice={formatPrice} />
         </div>
 
-        <ModuleSectionCard
-          title="Giao dịch gần đây"
-          description="10 giao dịch thu/chi mới nhất"
-          filters={
-            <Button
-              onClick={() => setIsAddTxOpen(true)}
-              className="bg-purple-900 hover:bg-purple-950 text-white h-9 rounded-xl text-sm font-semibold shrink-0"
+        {/* Transactions states, memo calculations for search/pagination */}
+        {(() => {
+          const filteredTransactions = transactions.filter((tx) => {
+            const query = txSearchQuery.toLowerCase().trim()
+            if (!query) return true
+            const desc = (tx.description || "").toLowerCase()
+            const user = (tx.user || "").toLowerCase()
+            const amount = String(tx.amount)
+            const typeLabel = (getRentalTransactionTypeLabel(tx.type) || "").toLowerCase()
+            return desc.includes(query) || user.includes(query) || amount.includes(query) || typeLabel.includes(query)
+          })
+
+          const txTotalPages = Math.max(1, Math.ceil(filteredTransactions.length / txItemsPerPage))
+          const txSafePage = Math.min(txCurrentPage, txTotalPages)
+          const paginatedTransactions = filteredTransactions.slice(
+            (txSafePage - 1) * txItemsPerPage,
+            txSafePage * txItemsPerPage
+          )
+
+          return (
+            <ModuleSectionCard
+              title="Giao dịch gần đây"
+              description="Quản lý các giao dịch thu/chi trong hệ thống"
+              filters={
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                  <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      placeholder="Tìm kiếm giao dịch..."
+                      value={txSearchQuery}
+                      onChange={(e) => {
+                        setTxSearchQuery(e.target.value)
+                        setTxCurrentPage(1)
+                      }}
+                      className="pl-9 bg-slate-50/50 border-slate-200 rounded-xl text-sm h-9 focus-visible:ring-purple-500"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => setIsAddTxOpen(true)}
+                    className="bg-purple-900 hover:bg-purple-950 text-white h-9 rounded-xl text-sm font-semibold shrink-0"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Nhập Thu/Chi
+                  </Button>
+                </div>
+              }
             >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Nhập Thu/Chi
-            </Button>
-          }
-        >
-          <CardContent className="p-0">
-            {transactions.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-slate-400 text-sm">Chưa có giao dịch nào</p>
-              </div>
-            ) : (
-              <ModuleResponsiveTable
-                desktop={
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="module-table-head border-b border-slate-100 bg-slate-50/50">
-                        <th className={cn(rentalTableHeadClass, "w-12 text-center")}>STT</th>
-                        <th className={rentalTableHeadClass}>Loại</th>
-                        <th className={rentalTableHeadClass}>Mô tả</th>
-                        <th className={cn(rentalTableHeadClass, "text-right")}>Số tiền</th>
-                        <th className={rentalTableHeadClass}>Người thực hiện</th>
-                        {user?.role === "admin" && (
-                          <th className={cn(rentalTableHeadClass, "text-center w-24")}>Tác vụ</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50 text-sm text-slate-700">
-                      {transactions
-                        .slice()
-                        .sort((a, b) => new Date(b.timestamp || b.created_at || 0).getTime() - new Date(a.timestamp || a.created_at || 0).getTime())
-                        .slice(0, 10)
-                        .map((tx, index) => (
-                        <tr key={tx.id} className="module-table-row hover:bg-slate-50/50 transition-colors">
-                          <td className="py-3 px-4 text-center text-xs text-slate-400 font-medium">{index + 1}</td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border ${
-                              tx.type === "income"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                : "bg-rose-50 text-rose-700 border-rose-100"
-                            }`}>
-                              {getRentalTransactionTypeLabel(tx.type)}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">{tx.description}</td>
-                          <td className={`py-3 px-4 text-right font-semibold tabular-nums ${
-                            tx.type === "income" ? "text-emerald-700" : "text-rose-600"
-                          }`}>
-                            {tx.type === "income" ? "+" : "-"}{formatPrice(tx.amount)}
-                          </td>
-                          <td className="py-3 px-4 text-slate-500">{tx.user}</td>
-                          {user?.role === "admin" && (
-                            <td className="py-3 px-4 text-center">
-                              <div className="flex gap-1 justify-center">
+              <CardContent className="p-0">
+                {transactions.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 text-sm">
+                    Chưa có giao dịch nào
+                  </div>
+                ) : filteredTransactions.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 text-sm">
+                    Không tìm thấy giao dịch nào phù hợp
+                  </div>
+                ) : (
+                  <>
+                    <ModuleResponsiveTable
+                      desktop={
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="module-table-head border-b border-slate-100 bg-slate-50/50">
+                              <th className={cn(rentalTableHeadClass, "w-12 text-center")}>STT</th>
+                              <th className={rentalTableHeadClass}>Loại</th>
+                              <th className={rentalTableHeadClass}>Ngày</th>
+                              <th className={rentalTableHeadClass}>Mô tả</th>
+                              <th className={cn(rentalTableHeadClass, "text-right")}>Số tiền</th>
+                              <th className={rentalTableHeadClass}>Người thực hiện</th>
+                              {user?.role === "admin" && (
+                                <th className={cn(rentalTableHeadClass, "text-center w-24")}>Tác vụ</th>
+                              )}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 text-sm text-slate-700">
+                            {paginatedTransactions.map((tx, index) => {
+                              const isDividend = tx.type === "expense" && /(cổ\s*tức|chia\s*lợi\s*nhuận|c[oố]t\s*[ưu]c)/i.test(tx.description || "")
+                              const isSalary = tx.type === "expense" && /(lương|trả\s*nhân\s*viên|nhân\s*viên|thưởng|luong|nhan\s*vien)/i.test(tx.description || "")
+                              const isCapital = isCapitalTransaction(tx)
+                              return (
+                                <tr key={tx.id} className="module-table-row hover:bg-slate-50/50 transition-colors">
+                                  <td className="py-3 px-4 text-center text-xs text-slate-400 font-medium">
+                                    {(txSafePage - 1) * txItemsPerPage + index + 1}
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    {isDividend ? (
+                                      <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-100">
+                                        Cổ tức
+                                      </span>
+                                    ) : isSalary ? (
+                                      <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-100">
+                                        Lương NV
+                                      </span>
+                                    ) : isCapital ? (
+                                      <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-100">
+                                        Vốn/Tài sản
+                                      </span>
+                                    ) : (
+                                      <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border ${
+                                        tx.type === "income"
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                          : "bg-rose-50 text-rose-700 border-rose-100"
+                                      }`}>
+                                        {getRentalTransactionTypeLabel(tx.type)}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-4 text-slate-500 whitespace-nowrap font-medium">{formatDisplayDate(tx.timestamp || tx.created_at)}</td>
+                                  <td className="py-3 px-4 text-slate-600">{tx.description}</td>
+                                  <td className={`py-3 px-4 text-right font-semibold tabular-nums ${
+                                    tx.type === "income" ? "text-emerald-700" : "text-rose-600"
+                                  }`}>
+                                    {tx.type === "income" ? "+" : "-"}{formatPrice(tx.amount)}
+                                  </td>
+                                  <td className="py-3 px-4 text-slate-500">{tx.user}</td>
+                                  {user?.role === "admin" && (
+                                    <td className="py-3 px-4 text-center">
+                                      <div className="flex gap-1 justify-center">
+                                        <button
+                                          onClick={() => handleEditTx(tx)}
+                                          className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1 rounded-lg transition"
+                                          title="Sửa"
+                                        >
+                                          <Edit2 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteTx(tx)}
+                                          className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-lg transition"
+                                          title="Xoá"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      }
+                      mobile={paginatedTransactions.map((tx, index) => {
+                        const isDividend = tx.type === "expense" && /(cổ\s*tức|chia\s*lợi\s*nhuận|c[oố]t\s*[ưu]c)/i.test(tx.description || "")
+                        const isSalary = tx.type === "expense" && /(lương|trả\s*nhân\s*viên|nhân\s*viên|thưởng|luong|nhan\s*vien)/i.test(tx.description || "")
+                        const isCapital = isCapitalTransaction(tx)
+                        return (
+                          <ModuleMobileCard key={tx.id}>
+                            <div className="flex justify-between items-start gap-2">
+                              {isDividend ? (
+                                <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-100">
+                                  Cổ tức
+                                </span>
+                              ) : isSalary ? (
+                                <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-100">
+                                  Lương NV
+                                </span>
+                              ) : isCapital ? (
+                                <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-100">
+                                  Vốn/Tài sản
+                                </span>
+                              ) : (
+                                <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border ${
+                                  tx.type === "income"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                    : "bg-rose-50 text-rose-700 border-rose-100"
+                                }`}>
+                                  {getRentalTransactionTypeLabel(tx.type)}
+                                </span>
+                              )}
+                              <span className="text-xs text-slate-400">
+                                {formatDisplayDate(tx.timestamp || tx.created_at)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-700 my-1">{tx.description}</p>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className={`font-bold tabular-nums ${tx.type === "income" ? "text-emerald-700" : "text-rose-600"}`}>
+                                {tx.type === "income" ? "+" : "-"}{formatPrice(tx.amount)}
+                              </span>
+                              <span className="text-slate-500">{tx.user}</span>
+                            </div>
+                            {user?.role === "admin" && (
+                              <div className="flex justify-end gap-3 mt-2 pt-2 border-t border-slate-100/50">
                                 <button
                                   onClick={() => handleEditTx(tx)}
-                                  className="text-slate-400 hover:text-purple-600 hover:bg-purple-50 p-1 rounded-lg transition"
+                                  className="text-slate-500 hover:text-purple-600 p-1 flex items-center gap-1 text-xs font-medium"
                                   title="Sửa"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
+                                  Sửa
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTx(tx)}
-                                  className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-lg transition"
-                                  title="Xoá"
+                                  className="text-rose-500 hover:text-rose-600 p-1 flex items-center gap-1 text-xs font-medium"
+                                  title="Xóa"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
+                                  Xóa
                                 </button>
                               </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                }
-                mobile={transactions
-                  .slice()
-                  .sort((a, b) => new Date(b.timestamp || b.created_at || 0).getTime() - new Date(a.timestamp || a.created_at || 0).getTime())
-                  .slice(0, 10)
-                  .map((tx, index) => (
-                  <ModuleMobileCard key={tx.id}>
-                    <div className="flex justify-between items-start gap-2">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${
-                        tx.type === "income"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                          : "bg-rose-50 text-rose-700 border-rose-100"
-                      }`}>
-                        {getRentalTransactionTypeLabel(tx.type)}
-                      </span>
-                      <span className="text-xs text-slate-400">#{index + 1}</span>
+                            )}
+                          </ModuleMobileCard>
+                        )
+                      })}
+                    />
+
+                    {/* Pagination matching 3lmoto style */}
+                    <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 bg-slate-50/50 rounded-b-xl sm:px-6">
+                      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs text-slate-500">
+                            Trang <span className="font-semibold text-slate-700">{txSafePage}</span> / <span className="font-semibold text-slate-700">{txTotalPages}</span> (Tổng <span className="font-semibold text-slate-700">{filteredTransactions.length}</span> giao dịch)
+                          </p>
+                        </div>
+                        <div>
+                          <nav className="relative z-0 inline-flex rounded-xl shadow-none space-x-1" aria-label="Pagination">
+                            <Button
+                              onClick={() => setTxCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={txSafePage === 1}
+                              variant="outline"
+                              className="rounded-xl h-8 text-xs border-slate-200"
+                            >
+                              Trước
+                            </Button>
+                            {Array.from({ length: txTotalPages }).map((_, i) => (
+                              <Button
+                                key={i}
+                                onClick={() => setTxCurrentPage(i + 1)}
+                                className={cn(
+                                  "rounded-xl w-8 h-8 p-0 text-xs font-semibold",
+                                  txSafePage === i + 1
+                                    ? "bg-purple-900 text-white hover:bg-purple-950"
+                                    : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                                )}
+                              >
+                                {i + 1}
+                              </Button>
+                            ))}
+                            <Button
+                              onClick={() => setTxCurrentPage(prev => Math.min(txTotalPages, prev + 1))}
+                              disabled={txSafePage === txTotalPages}
+                              variant="outline"
+                              className="rounded-xl h-8 text-xs border-slate-200"
+                            >
+                              Tiếp
+                            </Button>
+                          </nav>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-slate-700">{tx.description}</p>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className={`font-bold tabular-nums ${tx.type === "income" ? "text-emerald-700" : "text-rose-600"}`}>
-                        {tx.type === "income" ? "+" : "-"}{formatPrice(tx.amount)}
-                      </span>
-                      <span className="text-slate-500">{tx.user}</span>
-                    </div>
-                  </ModuleMobileCard>
-                ))}
-              />
-            )}
-          </CardContent>
-        </ModuleSectionCard>
+                  </>
+                )}
+              </CardContent>
+            </ModuleSectionCard>
+          )
+        })()}
       </div>
 
       <Dialog open={isAddTxOpen} onOpenChange={setIsAddTxOpen}>
@@ -1021,11 +1191,36 @@ export default function DashboardPage() {
                 </Select>
               </div>
               <div>
+                <Label className="text-gray-700 text-sm font-medium">Phân loại khoản</Label>
+                <Select
+                  value={txFormData.isCapital ? "capital" : "operating"}
+                  onValueChange={(val) => setTxFormData({ ...txFormData, isCapital: val === "capital" })}
+                >
+                  <SelectTrigger className="border-slate-300 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="operating">Vận hành (tính vào lợi nhuận)</SelectItem>
+                    <SelectItem value="capital">Vốn / mua tài sản (không tính LN)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-slate-500 mt-1">Ví dụ vốn: góp vốn, mua xe, mũ, định vị. Không làm lệch doanh thu/lợi nhuận.</p>
+              </div>
+              <div>
                 <Label className="text-gray-700 text-sm font-medium">Mô Tả</Label>
                 <Input
                   placeholder="Nhập mô tả (ví dụ: mua định vị, sửa xe)"
                   value={txFormData.description}
                   onChange={(e) => setTxFormData({ ...txFormData, description: e.target.value })}
+                  className="border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-700 text-sm font-medium">Ngày Giao Dịch</Label>
+                <Input
+                  type="date"
+                  value={txFormData.timestamp}
+                  onChange={(e) => setTxFormData({ ...txFormData, timestamp: e.target.value })}
                   className="border-gray-300 rounded-lg"
                 />
               </div>
@@ -1097,40 +1292,64 @@ export default function DashboardPage() {
           />
           <form onSubmit={(e) => { e.preventDefault(); handleConfirmEditTx(); }}>
             <EntityFormBody>
-            <div>
-              <Label className="text-gray-700 text-sm font-medium">Loại</Label>
-              <Select value={txEditFormData.type} onValueChange={(val) => setTxEditFormData({...txEditFormData, type: val as "income" | "expense"})}>
-                <SelectTrigger className="border-gray-300 rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="income">Thu</SelectItem>
-                  <SelectItem value="expense">Chi</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-gray-700 text-sm font-medium">Mô Tả</Label>
-              <Input
-                placeholder="Nhập mô tả"
-                value={txEditFormData.description}
-                onChange={(e) => setTxEditFormData({...txEditFormData, description: e.target.value})}
-                className="border-gray-300 rounded-lg"
-              />
-            </div>
-            <div>
-              <Label className="text-gray-700 text-sm font-medium">Số Tiền (VND)</Label>
-              <Input
-                type="text"
-                placeholder="Nhập số tiền (VD: 1.000.000)"
-                value={txEditFormData.amount}
-                onChange={(e) => {
-                  const formatted = formatMoneyInput(e.target.value)
-                  setTxEditFormData({...txEditFormData, amount: formatted})
-                }}
-                className="border-gray-300 rounded-lg font-mono"
-              />
-            </div>
+              <div>
+                <Label className="text-gray-700 text-sm font-medium">Loại</Label>
+                <Select value={txEditFormData.type} onValueChange={(val) => setTxEditFormData({...txEditFormData, type: val as "income" | "expense"})}>
+                  <SelectTrigger className="border-gray-300 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="income">Thu</SelectItem>
+                    <SelectItem value="expense">Chi</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-gray-700 text-sm font-medium">Phân loại khoản</Label>
+                <Select
+                  value={txEditFormData.isCapital ? "capital" : "operating"}
+                  onValueChange={(val) => setTxEditFormData({ ...txEditFormData, isCapital: val === "capital" })}
+                >
+                  <SelectTrigger className="border-slate-300 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="operating">Vận hành (tính vào lợi nhuận)</SelectItem>
+                    <SelectItem value="capital">Vốn / mua tài sản (không tính LN)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-gray-700 text-sm font-medium">Mô Tả</Label>
+                <Input
+                  placeholder="Nhập mô tả"
+                  value={txEditFormData.description}
+                  onChange={(e) => setTxEditFormData({...txEditFormData, description: e.target.value})}
+                  className="border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-700 text-sm font-medium">Ngày Giao Dịch</Label>
+                <Input
+                  type="date"
+                  value={txEditFormData.timestamp}
+                  onChange={(e) => setTxEditFormData({...txEditFormData, timestamp: e.target.value})}
+                  className="border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-700 text-sm font-medium">Số Tiền (VND)</Label>
+                <Input
+                  type="text"
+                  placeholder="Nhập số tiền (VD: 1.000.000)"
+                  value={txEditFormData.amount}
+                  onChange={(e) => {
+                    const formatted = formatMoneyInput(e.target.value)
+                    setTxEditFormData({...txEditFormData, amount: formatted})
+                  }}
+                  className="border-gray-300 rounded-lg font-mono"
+                />
+              </div>
             </EntityFormBody>
             <EntityFormFooter
               accent="purple"
