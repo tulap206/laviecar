@@ -1436,7 +1436,7 @@ export default function ReportsPage() {
         
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="bg-blue-50 border-blue-200 lg:col-span-2">
+            <Card className="bg-blue-50 border-blue-200 lg:col-span-3">
               <CardHeader className="pb-2 md:pb-4 p-3 md:p-4">
                 <CardTitle className="flex items-center gap-2 text-base md:text-lg text-blue-800">
                   <TrendingUp className="w-5 h-5" />
@@ -1529,63 +1529,6 @@ export default function ReportsPage() {
                       ))}
                     </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-slate-50 border-slate-200">
-              <CardHeader className="pb-2 p-3 md:p-4">
-                <CardTitle className="flex items-center gap-2 text-base md:text-lg text-slate-800">
-                  <Users className="w-5 h-5 text-slate-500" />
-                  Phân Chia Cổ Đông
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  Bảng chia đề xuất theo lợi nhuận ròng tháng trước
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-xs text-slate-700 p-3 md:p-4 space-y-4">
-                <div className="bg-white rounded-xl p-3 border border-slate-200/60 shadow-sm space-y-1.5">
-                  <div className="flex justify-between text-slate-500">
-                    <span>Lợi nhuận ròng vận hành:</span>
-                    <span className="font-bold text-slate-700">{reportData.totalProfit.toLocaleString("vi-VN")}đ</span>
-                  </div>
-                  <div className="flex justify-between text-slate-500">
-                    <span>Đã chia trong kỳ:</span>
-                    <span className="font-bold text-indigo-600">-{dividendExpenses.toLocaleString("vi-VN")}đ</span>
-                  </div>
-                  <div className="flex justify-between border-t border-slate-100 pt-1.5 font-semibold text-slate-800">
-                    <span>Còn lại cần chia:</span>
-                    <span className={reportData.totalProfit - dividendExpenses >= 0 ? "text-emerald-600" : "text-rose-600"}>
-                      {(reportData.totalProfit - dividendExpenses).toLocaleString("vi-VN")}đ
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <p className="font-semibold text-slate-600 text-xs">Phân chia theo tỷ lệ (Đề xuất 3 bên bằng nhau):</p>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-200/50">
-                      <div>
-                        <p className="font-medium text-slate-800">Cổ đông Admin</p>
-                        <p className="text-[10px] text-slate-400">Tỷ lệ: 33.33%</p>
-                      </div>
-                      <p className="font-bold text-slate-700 tabular-nums">{partnerShare.toLocaleString("vi-VN")}đ</p>
-                    </div>
-                    <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-200/50">
-                      <div>
-                        <p className="font-medium text-slate-800">Cổ đông Lộc A</p>
-                        <p className="text-[10px] text-slate-400">Tỷ lệ: 33.33%</p>
-                      </div>
-                      <p className="font-bold text-slate-700 tabular-nums">{partnerShare.toLocaleString("vi-VN")}đ</p>
-                    </div>
-                    <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-200/50">
-                      <div>
-                        <p className="font-medium text-slate-800">Cổ đông Lộc B</p>
-                        <p className="text-[10px] text-slate-400">Tỷ lệ: 33.33%</p>
-                      </div>
-                      <p className="font-bold text-slate-700 tabular-nums">{partnerShare.toLocaleString("vi-VN")}đ</p>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
