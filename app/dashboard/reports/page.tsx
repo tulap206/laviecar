@@ -562,7 +562,6 @@ export default function ReportsPage() {
       })
 
       const expenseStructure = [
-        { name: "Cổ tức", value: dividendExp, color: "#8b5cf6" },
         { name: "Lương nhân viên", value: salaryExp, color: "#6366f1" },
         { name: "Vốn & Tài sản", value: capitalExp, color: "#f59e0b" },
         { name: "Sửa xe & bảo dưỡng", value: maintenanceExp, color: "#ef4444" },
@@ -1292,11 +1291,7 @@ export default function ReportsPage() {
                             {(currentPage - 1) * itemsPerPage + index + 1}
                           </td>
                           <td className="py-3 px-4">
-                            {isDividendTransaction(tx) ? (
-                              <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-100">
-                                Cổ tức
-                              </span>
-                            ) : isSalaryTransaction(tx) ? (
+                            {isSalaryTransaction(tx) ? (
                               <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-100">
                                 Lương NV
                               </span>
@@ -1350,11 +1345,7 @@ export default function ReportsPage() {
                 mobile={paginatedTransactions.map((tx, index) => (
                   <ModuleMobileCard key={tx.id}>
                     <div className="flex justify-between items-start gap-2">
-                      {isDividendTransaction(tx) ? (
-                        <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-100">
-                          Cổ tức
-                        </span>
-                      ) : isSalaryTransaction(tx) ? (
+                      {isSalaryTransaction(tx) ? (
                         <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-100">
                           Lương NV
                         </span>
@@ -1512,12 +1503,7 @@ export default function ReportsPage() {
                         -{totalExpense.toLocaleString("vi-VN")} đ
                       </p>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500 mb-1">💸 Cổ tức đã chia</p>
-                      <p className="font-semibold text-base text-indigo-600 break-words">
-                        -{dividendExpenses.toLocaleString("vi-VN")} đ
-                      </p>
-                    </div>
+
                     <div>
                       <p className="text-xs text-slate-500 mb-1">🏠 Chi HH Home</p>
                       <p className="font-semibold text-base text-amber-700 break-words">

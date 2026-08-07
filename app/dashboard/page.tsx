@@ -1000,11 +1000,7 @@ export default function DashboardPage() {
                                     {(txSafePage - 1) * txItemsPerPage + index + 1}
                                   </td>
                                   <td className="py-3 px-4">
-                                    {isDividend ? (
-                                      <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-100">
-                                        Cổ tức
-                                      </span>
-                                    ) : isSalary ? (
+                                    {isSalary ? (
                                       <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-100">
                                         Lương NV
                                       </span>
@@ -1063,11 +1059,7 @@ export default function DashboardPage() {
                         return (
                           <ModuleMobileCard key={tx.id}>
                             <div className="flex justify-between items-start gap-2">
-                              {isDividend ? (
-                                <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-purple-50 text-purple-700 border-purple-100">
-                                  Cổ tức
-                                </span>
-                              ) : isSalary ? (
+                              {isSalary ? (
                                 <span className="inline-flex text-xs font-semibold px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-100">
                                   Lương NV
                                 </span>
