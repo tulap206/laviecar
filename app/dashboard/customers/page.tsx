@@ -720,6 +720,8 @@ export default function CustomersPage() {
             variant="hero"
             label="Tổng khách hàng"
             value={customerStats.total}
+            icon={<Users className="w-4 h-4" />}
+            watermark={<Users className="w-20 h-20" />}
             sublabel={
               <>
                 <span className="block">{filteredCustomers.length} đang lọc</span>
@@ -729,9 +731,33 @@ export default function CustomersPage() {
               </>
             }
           />
-          <RentalKpiCard variant="hero" label="Đang thuê" value={customerStats.renting} sublabel="Khách đang giữ xe" valueClassName="text-blue-700" />
-          <RentalKpiCard variant="hero" label="Chờ giao xe" value={customerStats.pending} sublabel="Đơn chờ xử lý" valueClassName="text-amber-700" />
-          <RentalKpiCard variant="hero" label="Ngừng hoạt động" value={customerStats.inactive} sublabel="Không giao dịch" valueClassName="text-slate-600" />
+          <RentalKpiCard
+            variant="hero"
+            label="Đang thuê"
+            value={customerStats.renting}
+            sublabel="Khách đang giữ xe"
+            valueClassName="text-blue-700"
+            icon={<Play className="w-4 h-4" />}
+            watermark={<Play className="w-20 h-20" />}
+          />
+          <RentalKpiCard
+            variant="hero"
+            label="Chờ giao xe"
+            value={customerStats.pending}
+            sublabel="Đơn chờ xử lý"
+            valueClassName="text-amber-700"
+            icon={<Clock className="w-4 h-4" />}
+            watermark={<Clock className="w-20 h-20" />}
+          />
+          <RentalKpiCard
+            variant="hero"
+            label="Ngừng hoạt động"
+            value={customerStats.inactive}
+            sublabel="Không giao dịch"
+            valueClassName="text-slate-600"
+            icon={<X className="w-4 h-4" />}
+            watermark={<X className="w-20 h-20" />}
+          />
         </div>
 
       <ModuleSectionCard

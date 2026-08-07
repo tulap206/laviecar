@@ -1332,6 +1332,8 @@ export default function OrdersPage() {
             variant="hero"
             label="Tổng đơn thuê"
             value={orderStats.total}
+            icon={<ClipboardList className="w-4 h-4" />}
+            watermark={<ClipboardList className="w-20 h-20" />}
             sublabel={
               <>
                 <span className="block">{filteredOrders.length} đang lọc</span>
@@ -1341,13 +1343,32 @@ export default function OrdersPage() {
               </>
             }
           />
-          <RentalKpiCard variant="hero" label="Đang thuê" value={orderStats.active} sublabel="Đơn hiện hành" valueClassName="text-blue-700" />
-          <RentalKpiCard variant="hero" label="Quá hạn" value={orderStats.overdue} sublabel="Cần theo dõi" valueClassName="text-amber-700" />
-          <RentalKpiCard variant="hero"
+          <RentalKpiCard
+            variant="hero"
+            label="Đang thuê"
+            value={orderStats.active}
+            sublabel="Đơn hiện hành"
+            valueClassName="text-blue-700"
+            icon={<Play className="w-4 h-4" />}
+            watermark={<Play className="w-20 h-20" />}
+          />
+          <RentalKpiCard
+            variant="hero"
+            label="Quá hạn"
+            value={orderStats.overdue}
+            sublabel="Cần theo dõi"
+            valueClassName="text-amber-700"
+            icon={<AlertCircle className="w-4 h-4" />}
+            watermark={<AlertCircle className="w-20 h-20" />}
+          />
+          <RentalKpiCard
+            variant="hero"
             label="Hoàn thành"
             value={orderStats.completed}
             sublabel={`Doanh thu: ${formatPrice(orderStats.revenue)}`}
             valueClassName="text-emerald-700"
+            icon={<CheckCircle className="w-4 h-4" />}
+            watermark={<CheckCircle className="w-20 h-20" />}
           />
         </div>
 

@@ -24,7 +24,7 @@ import {
   EntityFormDialogContent,
   EntityFormHeader,
 } from "@/components/dashboard/entity-form-dialog"
-import { Check, AlertTriangle, RefreshCw, Search, ChevronDown, ChevronUp, ImageIcon, Eye } from "lucide-react"
+import { Check, AlertTriangle, RefreshCw, Search, ChevronDown, ChevronUp, ImageIcon, Eye, Activity, Pin, Settings } from "lucide-react"
 import { toast } from "sonner"
 import {
   ModulePageShell,
@@ -157,14 +157,40 @@ export default function MaintenancePage() {
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-          <RentalKpiCard variant="hero" label="Xe cần bảo trì" value={maintenanceStats.total} sublabel={`${maintenanceStats.filtered} đang lọc`} />
-          <RentalKpiCard variant="hero" label="Cần gấp" value={maintenanceStats.urgent} sublabel="Quá hạn ≥ 300 km" valueClassName="text-rose-700" />
-          <RentalKpiCard variant="hero" label="KM quá hạn TB" value={maintenanceStats.avgOverdue} sublabel="km trung bình" valueClassName="text-amber-700" />
-          <RentalKpiCard variant="hero"
+          <RentalKpiCard
+            variant="hero"
+            label="Xe cần bảo trì"
+            value={maintenanceStats.total}
+            sublabel={`${maintenanceStats.filtered} đang lọc`}
+            icon={<Settings className="w-4 h-4" />}
+            watermark={<Settings className="w-20 h-20" />}
+          />
+          <RentalKpiCard
+            variant="hero"
+            label="Cần gấp"
+            value={maintenanceStats.urgent}
+            sublabel="Quá hạn ≥ 300 km"
+            valueClassName="text-rose-700"
+            icon={<AlertTriangle className="w-4 h-4" />}
+            watermark={<AlertTriangle className="w-20 h-20" />}
+          />
+          <RentalKpiCard
+            variant="hero"
+            label="KM quá hạn TB"
+            value={maintenanceStats.avgOverdue}
+            sublabel="km trung bình"
+            valueClassName="text-amber-700"
+            icon={<Activity className="w-4 h-4" />}
+            watermark={<Activity className="w-20 h-20" />}
+          />
+          <RentalKpiCard
+            variant="hero"
             label="Mốc bảo trì"
             value="1.000"
             sublabel="km / lần bảo trì"
             valueClassName="text-slate-700"
+            icon={<Pin className="w-4 h-4" />}
+            watermark={<Pin className="w-20 h-20" />}
           />
         </div>
 

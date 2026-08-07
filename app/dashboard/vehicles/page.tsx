@@ -47,7 +47,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Plus, Search, Pencil, Trash2, Car, Eye, Clock, Upload, X, ImageIcon, Settings } from "lucide-react"
+import { Plus, Search, Pencil, Trash2, Car, Eye, Clock, Upload, X, ImageIcon, Settings, CheckCircle, Play } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 
 type VehicleStatus = "available" | "rented" | "maintenance"
@@ -959,26 +959,42 @@ export default function VehiclesPage() {
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <RentalKpiCard label="Tổng số xe" value={vehicleStats.total} sublabel={`${filteredVehicles.length} đang lọc`} />
           <RentalKpiCard
+            variant="hero"
+            label="Tổng số xe"
+            value={vehicleStats.total}
+            sublabel={`${filteredVehicles.length} đang lọc`}
+            icon={<Car className="w-4 h-4" />}
+            watermark={<Car className="w-20 h-20" />}
+          />
+          <RentalKpiCard
+            variant="hero"
             label="Sẵn sàng"
             value={vehicleStats.available}
             sublabel="Có thể cho thuê"
             valueClassName="text-emerald-700"
+            icon={<CheckCircle className="w-4 h-4" />}
+            watermark={<CheckCircle className="w-20 h-20" />}
             onClick={() => setStatusFilter("available")}
           />
           <RentalKpiCard
+            variant="hero"
             label="Đang thuê"
             value={vehicleStats.rented}
             sublabel="Xe đang cho khách"
             valueClassName="text-sky-700"
+            icon={<Play className="w-4 h-4" />}
+            watermark={<Play className="w-20 h-20" />}
             onClick={() => setStatusFilter("rented")}
           />
           <RentalKpiCard
+            variant="hero"
             label="Bảo trì"
             value={vehicleStats.maintenance}
             sublabel="Tạm ngừng cho thuê"
             valueClassName="text-amber-700"
+            icon={<Settings className="w-4 h-4" />}
+            watermark={<Settings className="w-20 h-20" />}
             onClick={() => setStatusFilter("maintenance")}
           />
         </div>
