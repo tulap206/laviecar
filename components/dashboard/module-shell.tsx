@@ -139,6 +139,7 @@ export function ModuleKpiCard({
   variant = "compact",
   icon,
   iconColor,
+  watermark,
   delay = 0,
 }: {
   accent?: ModuleAccent
@@ -151,45 +152,80 @@ export function ModuleKpiCard({
   variant?: "compact" | "hero"
   icon?: React.ReactNode
   iconColor?: string
+  watermark?: React.ReactNode
   delay?: number
 }) {
   if (variant === "hero") {
+    const isOverdue = label === "Quá hạn"
     return (
-      <Card
-        className={cn(
-          "metric-card card-animate module-card bg-white min-w-0 overflow-hidden",
-          onClick && ["cursor-pointer", ACCENT_KPI_HOVER_CLASS[accent]]
+      <>
+        {isOverdue && (
+          <style>{`
+            @keyframes pulse-red-glow-direct {
+              0%, 100% {
+                border-color: rgba(225, 29, 72, 0.2) !important;
+                box-shadow: 0 2px 8px rgba(225, 29, 72, 0.05) !important;
+              }
+              50% {
+                border-color: rgba(225, 29, 72, 0.85) !important;
+                box-shadow: 0 0 12px 2px rgba(225, 29, 72, 0.28) !important;
+              }
+            }
+            .animate-pulse-red-glow-direct {
+              animation: pulse-red-glow-direct 2s infinite ease-in-out !important;
+              border: 1.5px solid rgba(225, 29, 72, 0.2) !important;
+            }
+          `}</style>
         )}
-        style={{ animationDelay: `${delay * 60}ms` }}
-        onClick={onClick}
-      >
-        <CardHeader className="flex flex-row items-start justify-between space-y-0 px-3.5 pt-3.5 pb-1 sm:px-4 sm:pt-4">
-          <div className="space-y-0.5 min-w-0 flex-1 min-h-[2.25rem]">
-            <p className="text-[11px] sm:text-xs font-semibold text-slate-600 leading-snug truncate">{label}</p>
-            {sublabel && <p className="text-[10px] sm:text-xs text-slate-500 truncate">{sublabel}</p>}
-          </div>
-          {icon && <div className={cn(iconColor || ACCENT_TITLE_CLASS[accent], "text-lg shrink-0 ml-1")}>{icon}</div>}
-        </CardHeader>
-        <CardContent className="px-3.5 pb-3.5 pt-0.5 sm:px-4 sm:pb-4">
-          <div
-            className={cn(
-              "font-extrabold text-slate-900 tracking-tight tabular-nums leading-tight min-w-0 break-all",
-              "text-sm sm:text-base xl:text-lg",
-              valueClassName
-            )}
-            title={valueTitle}
-          >
-            {value}
-          </div>
-        </CardContent>
-      </Card>
+        <Card
+          className={cn(
+            "metric-card card-animate module-card group relative bg-white min-w-0 overflow-hidden border border-slate-100/90 rounded-2xl",
+            "transition-all duration-300 ease-out",
+            ACCENT_KPI_HOVER_CLASS[accent],
+            onClick && "cursor-pointer",
+            isOverdue && "animate-pulse-red-glow-direct"
+          )}
+          style={{ animationDelay: `${delay * 60}ms` }}
+          onClick={onClick}
+        >
+          {watermark && (
+            <div
+              className="absolute right-[-10px] bottom-[-12px] select-none pointer-events-none text-purple-600 opacity-[0.07] transition-all duration-300 group-hover:opacity-[0.13] group-hover:scale-110"
+              aria-hidden
+            >
+              {watermark}
+            </div>
+          )}
+          <CardContent className="relative z-10 px-4 py-3.5 flex flex-col justify-between h-full min-h-[5.5rem] space-y-1.5">
+            <div className="flex justify-between items-start w-full gap-2">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <p className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wide leading-tight">{label}</p>
+                {sublabel && <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 leading-snug">{sublabel}</p>}
+              </div>
+              {icon && (
+                <div className={cn(iconColor || ACCENT_TITLE_CLASS[accent], "text-sm shrink-0")}>{icon}</div>
+              )}
+            </div>
+            <div
+              className={cn(
+                "font-extrabold text-slate-900 tracking-tight tabular-nums leading-none min-w-0",
+                "text-sm sm:text-base xl:text-lg",
+                valueClassName
+              )}
+              title={valueTitle}
+            >
+              {value}
+            </div>
+          </CardContent>
+        </Card>
+      </>
     )
   }
 
   return (
     <Card
       className={cn(
-        "module-card rounded-xl border-slate-100/80 shadow-sm transition-shadow duration-200",
+        "module-card rounded-xl border-slate-100/80 shadow-sm transition-all duration-300",
         onClick && ["cursor-pointer hover:shadow-md", ACCENT_KPI_HOVER_CLASS[accent]]
       )}
       onClick={onClick}
@@ -201,6 +237,43 @@ export function ModuleKpiCard({
       </CardContent>
     </Card>
   )
+}
+
+export function ModuleSectionTitle({
+  title,
+  description,
+  action,
+}: {
+  title: string
+  description?: string
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="flex items-end justify-between gap-3 mb-3">
+      <div className="min-w-0">
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</h2>
+        {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+      </div>
+      {action}
+    </div>
+  )
+}
+
+export function ModuleKpiGrid({
+  columns = 4,
+  children,
+}: {
+  columns?: number
+  children: React.ReactNode
+}) {
+  const gridCols =
+    columns === 5
+      ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+      : columns === 6
+        ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
+        : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+
+  return <div className={cn("grid gap-4", gridCols)}>{children}</div>
 }
 
 export function ModuleSectionHeading({

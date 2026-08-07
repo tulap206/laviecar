@@ -10,7 +10,7 @@ export const rentalTableHeadClass = moduleTableHeadClass
 export const rentalFilterInputClass = moduleFilterInputClass
 
 export function RentalKpiCard(
-  props: Omit<React.ComponentProps<typeof ModuleKpiCard>, "accent">
+  props: Omit<React.ComponentProps<typeof ModuleKpiCard>, "accent"> & { watermark?: React.ReactNode }
 ) {
   return <ModuleKpiCard accent="purple" {...props} />
 }

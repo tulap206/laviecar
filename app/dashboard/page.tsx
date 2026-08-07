@@ -18,12 +18,23 @@ import {
   Edit2,
   Trash2,
   TrendingUp,
+  Car,
+  TrendingDown,
+  Scale,
+  Calendar,
+  AlertCircle,
+  Clock,
+  DollarSign,
+  Briefcase,
+  Layers,
+  ArrowUpRight,
+  ClipboardList,
 } from "lucide-react"
 import { SkeletonMetricCards, SkeletonTable } from "@/components/ui/skeleton-loader"
 import { MonthlyRevenueChart, RentalStatusChart, RentalFleetChart, RentalIncomeExpenseChart } from "@/components/dashboard/rental-charts"
 import { OverdueOrdersPanel, CommissionHomeReportPanel } from "@/components/dashboard/rental-overview-panels"
 import { RentalKpiCard, rentalTableHeadClass, getRentalTransactionTypeLabel } from "@/components/dashboard/rental-ui"
-import { ModulePageShell, ModuleBrandHeader, ModuleSectionCard, ModuleResponsiveTable, ModuleMobileCard } from "@/components/dashboard/module-shell"
+import { ModulePageShell, ModuleBrandHeader, ModuleSectionCard, ModuleResponsiveTable, ModuleMobileCard, ModuleSectionTitle, ModuleKpiGrid } from "@/components/dashboard/module-shell"
 import { cn } from "@/lib/utils"
 import {
   EntityFormDialogContent,
@@ -48,6 +59,8 @@ import {
 } from "@/components/ui/select"
 import { formatMoneyInput, parseMoneyInput } from "@/lib/format-money"
 import { formatDisplayDate, toStoredDateValue } from "@/lib/format-date"
+import { calcOperatingProfit, calcOperatingRevenue, isCapitalTransaction, sumTxAmount } from "@/lib/transaction-finance"
+import { buildCommissionHomeReport, sumCommissionRows } from "@/lib/commission-home"
 import { useAuth } from "@/contexts/auth-context"
 import { logger } from "@/lib/logger"
 
@@ -58,6 +71,7 @@ interface DashboardStats {
   totalRentals: number
   activeRentals: number
   overdueRentals: number
+  cashOnHand: number
 }
 
 export default function DashboardPage() {
@@ -356,17 +370,15 @@ export default function DashboardPage() {
       // Rental revenue (from completed rentals, includes extraFees via revenue field)
       const rentalRevenue = completedRentals.reduce((sum: number, r: any) => sum + (r.revenue || r.totalPrice || 0), 0)
 
+      // Operating calculations matching 3lmoto financial principles
+      const totalIncome = sumTxAmount(transactions, "income", false)
+      const totalExpense = sumTxAmount(transactions, "expense", false)
       
-      // Transaction totals
-      const totalIncome = transactions
-        .filter((tx: any) => tx.type === 'income')
-        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0)
+      const totalRevenue = calcOperatingRevenue(rentalRevenue, transactions)
+      const totalProfit = calcOperatingProfit(rentalRevenue, transactions)
       
-      // Doanh thu = Rental revenue + Income from transactions
-      const totalRevenue = rentalRevenue + totalIncome
-      
-      // Lợi nhuận = Rental revenue ONLY (not counting transactions)
-      const totalProfit = rentalRevenue
+      // Tiền quỹ tích lũy = Doanh thu thuê + Tổng Thu ngoài - Tổng Chi ngoài
+      const cashOnHand = rentalRevenue + totalIncome - totalExpense
 
       setStats({
         totalVehicles: vehicles.length,
@@ -375,6 +387,7 @@ export default function DashboardPage() {
         totalRentals: rentals.length,
         activeRentals: activeRentals.length,
         overdueRentals: overdueRentals.length,
+        cashOnHand,
       })
 
       setTransactions(transactions)
@@ -389,12 +402,15 @@ export default function DashboardPage() {
       }
       
       const monthlyData: Record<string, number> = {}
+      // Chỉ đơn hoàn tất; ghi nhận theo ngày kết thúc (khi chốt doanh thu)
       rentals.forEach((rental: any) => {
-        if (rental.startDate) {
-          const date = parseVietnamDate(rental.startDate)
-          const monthKey = `Thg ${date.getMonth() + 1}`
-          monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (rental.revenue || rental.totalPrice || 0)
-        }
+        if (rental.status !== "completed") return
+        const dateStr = rental.endDate || rental.startDate
+        if (!dateStr) return
+        const date = parseVietnamDate(dateStr)
+        if (isNaN(date.getTime())) return
+        const monthKey = `Thg ${date.getMonth() + 1}`
+        monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (rental.revenue || rental.totalPrice || 0)
       })
 
       const computedMonthlyRevenue = [
@@ -519,27 +535,39 @@ export default function DashboardPage() {
     })
     const utilizationPct = totalVehicleDays > 0 ? Math.round((totalRentedDays / totalVehicleDays) * 100) : 0
 
-    // Revenue this month: from completed orders whose endDate falls in this month
-    const revenueThisMonth = orders
-      .filter(o => {
-        if (o.status !== "completed") return false
-        const end = parseVN(o.endDate)
-        return end.getMonth() === currentMonth && end.getFullYear() === currentYear
-      })
-      .reduce((sum: number, o: any) => sum + (o.revenue || o.totalPrice || 0), 0)
-
-    // Commission report: group active orders by homeName
-    const commissionMap: Record<string, { count: number; total: number }> = {}
-    orders.filter(o => o.commissionHome && o.homeName && o.status !== "cancelled").forEach(o => {
-      const key = o.homeName as string
-      if (!commissionMap[key]) commissionMap[key] = { count: 0, total: 0 }
-      commissionMap[key].count += 1
-      commissionMap[key].total += (o.commissionHome || 0) * (o.totalDays || 0)
+    // Revenue this month: completed rentals ending this month + manual income this month
+    const completedOrdersThisMonth = orders.filter(o => {
+      if (o.status !== "completed") return false
+      const end = parseVN(o.endDate)
+      return end.getMonth() === currentMonth && end.getFullYear() === currentYear
     })
-    const commissionReport = Object.entries(commissionMap).map(([name, val]) => ({ name, ...val }))
+    const rentalRevenueThisMonth = completedOrdersThisMonth.reduce((sum: number, o: any) => sum + (o.revenue || o.totalPrice || 0), 0)
 
-    return { utilizationPct, revenueThisMonth, commissionReport }
-  }, [vehicles, orders])
+    const txThisMonth = transactions.filter((tx) => {
+      const date = new Date(tx.timestamp || tx.created_at || "")
+      if (isNaN(date.getTime())) return false
+      return date.getMonth() === currentMonth && date.getFullYear() === currentYear
+    })
+    const revenueThisMonth = calcOperatingRevenue(rentalRevenueThisMonth, txThisMonth)
+    const profitThisMonth = calcOperatingProfit(rentalRevenueThisMonth, txThisMonth)
+
+    // HH Home tháng này: đơn hoàn thành kết thúc trong tháng (đã trừ trong revenue)
+    const commissionReport = buildCommissionHomeReport(orders, {
+      month: currentMonth,
+      year: currentYear,
+      completedOnly: true,
+    })
+    const commissionThisMonth = sumCommissionRows(commissionReport)
+
+    return {
+      utilizationPct,
+      revenueThisMonth,
+      profitThisMonth,
+      ordersCountThisMonth: completedOrdersThisMonth.length,
+      commissionReport,
+      commissionThisMonth,
+    }
+  }, [vehicles, orders, transactions])
 
   const overdueOrderRows = useMemo(() => {
     const today = new Date()
@@ -722,62 +750,128 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="space-y-5">
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-          <RentalKpiCard
-            variant="hero"
-            label="Tổng xe"
-            value={stats.totalVehicles}
-            onClick={() => router.push("/dashboard/vehicles")}
-          />
-          <RentalKpiCard
-            variant="hero"
-            label="Xe đang thuê"
-            value={stats.activeRentals}
-            valueClassName="text-purple-700"
-            onClick={() => router.push("/dashboard/orders?status=active")}
-          />
-          <RentalKpiCard
-            variant="hero"
-            label="Đơn thuê"
-            value={stats.totalRentals}
-            onClick={() => router.push("/dashboard/orders")}
-          />
-          <RentalKpiCard
-            variant="hero"
-            label="Quá hạn"
-            value={stats.overdueRentals}
-            valueClassName="text-amber-700"
-            sublabel="đơn thuê"
-            onClick={() => router.push("/dashboard/orders?status=overdue")}
-          />
-          <RentalKpiCard
-            variant="hero"
-            label="Doanh thu"
-            value={formatPrice(stats.totalRevenue)}
-            valueClassName="text-emerald-700"
-          />
-          <RentalKpiCard
-            variant="hero"
-            label="Lợi nhuận"
-            value={formatPrice(stats.totalProfit)}
-            valueClassName="text-blue-700"
-          />
-          <RentalKpiCard
-            variant="hero"
-            label="Lấp đầy tháng này"
-            value={`${thisMonthKpis.utilizationPct}%`}
-            sublabel="tỷ lệ sử dụng"
-            valueClassName={thisMonthKpis.utilizationPct >= 70 ? "text-emerald-700" : thisMonthKpis.utilizationPct >= 40 ? "text-amber-600" : "text-rose-600"}
-          />
-          <RentalKpiCard
-            variant="hero"
-            label="Doanh thu tháng này"
-            value={formatPrice(thisMonthKpis.revenueThisMonth)}
-            sublabel="đơn đã hoàn thành"
-            valueClassName="text-emerald-700"
-            icon={<TrendingUp className="w-4 h-4" />}
-          />
+      <div className="space-y-6">
+        {/* Nhóm chỉ số vận hành */}
+        <div className="space-y-3">
+          <ModuleSectionTitle title="Vận hành đội xe" />
+          <ModuleKpiGrid columns={5}>
+            <RentalKpiCard
+              variant="hero"
+              label="Tổng xe"
+              value={stats.totalVehicles}
+              sublabel="trong hệ thống"
+              icon={<Car className="w-4 h-4" />}
+              watermark={<Car className="w-20 h-20" />}
+              onClick={() => router.push("/dashboard/vehicles")}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label="Xe đang thuê"
+              value={stats.activeRentals}
+              valueClassName="text-purple-700"
+              sublabel="khách đang chạy"
+              icon={<ClipboardList className="w-4 h-4" />}
+              watermark={<ClipboardList className="w-20 h-20" />}
+              onClick={() => router.push("/dashboard/orders?status=active")}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label="Đơn thuê"
+              value={stats.totalRentals}
+              sublabel="tổng số đơn"
+              icon={<Layers className="w-4 h-4" />}
+              watermark={<Layers className="w-20 h-20" />}
+              onClick={() => router.push("/dashboard/orders")}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label={`Đơn tháng ${new Date().getMonth() + 1}`}
+              value={thisMonthKpis.ordersCountThisMonth}
+              sublabel="đơn hoàn thành"
+              icon={<Calendar className="w-4 h-4" />}
+              watermark={<Calendar className="w-20 h-20" />}
+              onClick={() => router.push("/dashboard/orders")}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label="Quá hạn"
+              value={stats.overdueRentals}
+              valueClassName="text-amber-700"
+              sublabel="đơn trễ hạn trả"
+              icon={<AlertCircle className="w-4 h-4" />}
+              watermark={<AlertCircle className="w-20 h-20" />}
+              onClick={() => router.push("/dashboard/orders?status=overdue")}
+            />
+          </ModuleKpiGrid>
+        </div>
+
+        {/* Nhóm chỉ số tài chính */}
+        <div className="space-y-3">
+          <ModuleSectionTitle title="Hiệu suất tài chính" />
+          <ModuleKpiGrid columns={6}>
+            <RentalKpiCard
+              variant="hero"
+              label="Tổng doanh thu"
+              value={formatPrice(stats.totalRevenue)}
+              valueClassName="text-emerald-700"
+              sublabel="thuê + thu vận hành"
+              icon={<TrendingUp className="w-4 h-4" />}
+              watermark={<TrendingUp className="w-20 h-20" />}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label="Tổng lợi nhuận"
+              value={formatPrice(stats.totalProfit)}
+              valueClassName="text-purple-700"
+              sublabel="sau chi vận hành"
+              icon={<ArrowUpRight className="w-4 h-4" />}
+              watermark={<ArrowUpRight className="w-20 h-20" />}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label={`Doanh thu tháng ${new Date().getMonth() + 1}`}
+              value={formatPrice(thisMonthKpis.revenueThisMonth)}
+              sublabel={
+                thisMonthKpis.commissionThisMonth > 0
+                  ? `đã trừ HH Home ${formatPrice(thisMonthKpis.commissionThisMonth)}`
+                  : "đơn + thu vận hành"
+              }
+              valueClassName="text-emerald-700"
+              icon={<DollarSign className="w-4 h-4" />}
+              watermark={<DollarSign className="w-20 h-20" />}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label={`Lợi nhuận tháng ${new Date().getMonth() + 1}`}
+              value={formatPrice(thisMonthKpis.profitThisMonth)}
+              sublabel={
+                thisMonthKpis.commissionThisMonth > 0
+                  ? `sau chi vận hành + HH Home`
+                  : "sau chi vận hành"
+              }
+              valueClassName="text-purple-700"
+              icon={<Briefcase className="w-4 h-4" />}
+              watermark={<Briefcase className="w-20 h-20" />}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label="Tiền quỹ còn lại"
+              value={formatPrice(stats.cashOnHand)}
+              valueClassName={stats.cashOnHand >= 0 ? "text-indigo-700" : "text-rose-700"}
+              sublabel="số dư quỹ tích lũy"
+              icon={<Scale className="w-4 h-4" />}
+              watermark={<Scale className="w-20 h-20" />}
+            />
+            <RentalKpiCard
+              variant="hero"
+              label="Tỷ lệ lấp đầy"
+              value={`${thisMonthKpis.utilizationPct}%`}
+              sublabel="hiệu suất sử dụng xe"
+              valueClassName={thisMonthKpis.utilizationPct >= 70 ? "text-emerald-700" : thisMonthKpis.utilizationPct >= 40 ? "text-amber-600" : "text-purple-600"}
+              icon={<Clock className="w-4 h-4" />}
+              watermark={<Clock className="w-20 h-20" />}
+            />
+          </ModuleKpiGrid>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
