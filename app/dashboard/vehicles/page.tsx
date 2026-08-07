@@ -250,31 +250,103 @@ export default function VehiclesPage() {
     }
   }, [loadVehicles])
 
-  const filteredVehicles = vehicles.filter((vehicle) => {
-    const matchesSearch =
-      vehicle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.licensePlate.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || vehicle.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  const vehiclePerformanceMap = useMemo(() => {
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(today.getDate() - 30)
+    thirtyDaysAgo.setHours(0,0,0,0)
 
-  // Reset page when filters change
+    const map: Record<string, { utilizationRate: number; revenue30d: number }> = {}
+
+    const parseVietnamDate = (dateStr: string): Date => {
+      if (!dateStr) return new Date()
+      const parts = dateStr.split("/")
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]))
+      }
+      return new Date(dateStr)
+    }
+
+    vehicles.forEach(vehicle => {
+      const vehicleOrders = (orders || []).filter(o => o.vehicleId === vehicle.id && o.status !== "cancelled" && o.status !== "pending")
+      let rentedDays = 0
+      let totalRevenue30d = 0
+
+      vehicleOrders.forEach(o => {
+        const start = parseVietnamDate(o.startDate)
+        const end = parseVietnamDate(o.endDate)
+        start.setHours(0,0,0,0)
+        end.setHours(0,0,0,0)
+
+        const overlapStart = start < thirtyDaysAgo ? thirtyDaysAgo : start
+        const overlapEnd = end > today ? today : end
+
+        if (overlapStart <= overlapEnd) {
+          const diffTime = overlapEnd.getTime() - overlapStart.getTime()
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+          rentedDays += diffDays
+          
+          const dailyRate = o.pricePerDay || 0
+          totalRevenue30d += diffDays * dailyRate
+        }
+      })
+
+      if (rentedDays > 30) rentedDays = 30
+      const utilizationRate = Math.round((rentedDays / 30) * 100)
+      map[vehicle.id] = { utilizationRate, revenue30d: totalRevenue30d }
+    })
+
+    return map
+  }, [vehicles, orders])
+
+  const filteredVehicles = useMemo(() => {
+    const filtered = vehicles.filter((vehicle) => {
+      const matchesSearch =
+        vehicle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.licensePlate.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesStatus = statusFilter === "all" || vehicle.status === statusFilter
+      return matchesSearch && matchesStatus
+    })
+
+    // Sắp xếp tự động theo Hiệu suất lấp đầy 30 ngày (giảm dần), doanh thu 30 ngày (giảm dần)
+    return [...filtered].sort((a, b) => {
+      const utilizationA = vehiclePerformanceMap[a.id]?.utilizationRate || 0
+      const utilizationB = vehiclePerformanceMap[b.id]?.utilizationRate || 0
+      
+      if (utilizationB !== utilizationA) {
+        return utilizationB - utilizationA
+      }
+      const revA = vehiclePerformanceMap[a.id]?.revenue30d || 0
+      const revB = vehiclePerformanceMap[b.id]?.revenue30d || 0
+      if (revB !== revA) {
+        return revB - revA
+      }
+      return a.name.localeCompare(b.name)
+    })
+  }, [vehicles, searchTerm, statusFilter, vehiclePerformanceMap])
+
+  // Reset page khi thay đổi bộ lọc
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm, statusFilter])
 
   const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage)
-  const paginatedVehicles = filteredVehicles.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  const paginatedVehicles = useMemo(() => {
+    return filteredVehicles.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    )
+  }, [filteredVehicles, currentPage])
 
-  const vehicleStats = {
-    total: vehicles.length,
-    available: vehicles.filter((v) => v.status === "available").length,
-    rented: vehicles.filter((v) => v.status === "rented").length,
-    maintenance: vehicles.filter((v) => v.status === "maintenance").length,
-  }
+  const vehicleStats = useMemo(() => {
+    return {
+      total: vehicles.length,
+      available: vehicles.filter((v) => v.status === "available").length,
+      rented: vehicles.filter((v) => v.status === "rented").length,
+      maintenance: vehicles.filter((v) => v.status === "maintenance").length,
+    }
+  }, [vehicles])
 
   const handleAddVehicle = async () => {
     if (!newVehicle.name || !newVehicle.name.trim()) {
