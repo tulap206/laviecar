@@ -332,7 +332,6 @@ export default function VehiclesPage() {
           purchasePrice: parseMoneyInput(newVehicle.purchasePrice),
           notes: newVehicle.notes,
           status: newVehicle.status,
-          category: newVehicle.category,
           vehicleImages: vehicleImageUrls,
           documentImages: documentImageUrls,
         }
@@ -452,7 +451,6 @@ export default function VehiclesPage() {
           purchasePrice: parseMoneyInput(editingVehicle.purchasePrice?.toString() || '0'),
           notes: editingVehicle.notes,
           status: editingVehicle.status,
-          category: editingVehicle.category,
           vehicleImages: finalVehicleImages,
           documentImages: finalDocumentImages,
         }
