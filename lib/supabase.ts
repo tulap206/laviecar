@@ -113,7 +113,7 @@ export const fetchVehicles = async () => {
   )
   
   // Ensure all vehicles have the required fields with defaults and correct dynamic status
-  return (vehiclesResult.data || []).map(vehicle => {
+  return (vehiclesResult.data || []).map((vehicle: any) => {
     let status = vehicle.status
     if (status !== 'maintenance') {
       status = activeVehicleIds.has(vehicle.id) ? 'rented' : 'available'

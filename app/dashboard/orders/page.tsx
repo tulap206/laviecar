@@ -1,8 +1,11 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { showError, showWarning } from "@/lib/toast-utils"
 import { createPortal } from "react-dom"
 import { useAuth } from "@/contexts/auth-context"
+import { useRentalData } from "@/contexts/rental-data-context"
 import { logger } from "@/lib/logger"
 import { formatMoneyInput, parseMoneyInput } from "@/lib/format-money"
 import { formatDisplayDate, formatDisplayDateTime, toDateInputValue, toStoredDateValue } from "@/lib/format-date"
@@ -29,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import {
   EntityFormDialogContent,
   EntityFormHeader,
@@ -41,18 +43,29 @@ import {
   EntityFormTip,
   entityFormInputClass,
 } from "@/components/dashboard/entity-form-dialog"
-import { ModulePageShell, ModuleSubpageHeader, ModuleSectionCard, ModuleResponsiveTable, ModuleMobileCard } from "@/components/dashboard/module-shell"
+import { ModulePageShell, ModuleSubpageHeader, ModuleSectionCard, ModuleResponsiveTable, ModuleMobileCard, ModulePagination } from "@/components/dashboard/module-shell"
 import {
   RentalKpiCard,
   rentalTableHeadClass,
   rentalFilterInputClass,
   getRentalOrderStatusLabel,
   rentalOrderStatusBadgeClass,
+  getRentalCustomerStatusLabel,
+  rentalCustomerStatusBadgeClass,
+  getRentalVehicleStatusLabel,
+  rentalVehicleStatusBadgeClass,
 } from "@/components/dashboard/rental-ui"
 import { cn } from "@/lib/utils"
-import { Plus, Search, Eye, ClipboardList, Calendar, User, Car, Settings, X, ImageIcon, Phone, MapPin, Facebook, Trash2, Printer, FileText, Play, CheckCircle, DollarSign } from "lucide-react"
-import { LAVIECAR_BUSINESS } from "@/lib/business-info"
+import { Plus, Search, Eye, ClipboardList, Calendar, User, Car, Settings, X, ImageIcon, Phone, MapPin, Trash2, Printer, FileText, Play, CheckCircle, DollarSign } from "lucide-react"
+import { QUY79_BUSINESS } from "@/lib/business-info"
 import { PrintBusinessHeader, PrintShopPartyBlock } from "@/components/dashboard/print-business-blocks"
+import {
+  type RentalTerm,
+  getRentalTerm,
+  getRentalTermLabel,
+  stripRentalTermFromNotes,
+  buildRentalTermPayload,
+} from "@/lib/rental-term"
 
 interface RentalOrder {
   id: string
@@ -76,17 +89,17 @@ interface RentalOrder {
   rentalCode?: string
   commissionHome?: number
   homeName?: string
+  rentalTerm?: "short" | "long"
 }
 
 interface Customer {
   id: string
   name: string
   phone: string
-  facebook?: string
   address?: string
   idcard: string
   totalrentals: number
-  status: "active" | "inactive"
+  status: "active" | "inactive" | "renting" | "pending"
   createdAt?: string
   created_at?: string
   customerphoto?: string[]
@@ -109,6 +122,9 @@ interface Vehicle {
   vehicleImages: string[]
   documentImages: string[]
   totalRentalDays?: number
+  totalRevenue?: number
+  profit?: number
+  category?: "car" | "bike"
 }
 
 // Lightbox component
@@ -161,13 +177,8 @@ function LightboxModal({ imageSrc, onClose }: { imageSrc: string; onClose: () =>
   )
 }
 
-const vehicleStatusConfig = {
-  available: { label: "Sẵn sàng", className: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-  rented: { label: "Đang thuê", className: "bg-red-50 text-red-700 border-red-100" },
-  maintenance: { label: "Bảo trì", className: "bg-amber-50 text-amber-700 border-amber-100" },
-}
-
 export default function OrdersPage() {
+  const router = useRouter()
   const [isNewCustomer, setIsNewCustomer] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState("")
   const [newCustomerPhone, setNewCustomerPhone] = useState("")
@@ -176,13 +187,11 @@ export default function OrdersPage() {
   const [newCustomerCCCDFront, setNewCustomerCCCDFront] = useState<File | null>(null)
   const [hasCommission, setHasCommission] = useState(false)
   const { addAccessLog, user } = useAuth()
-  const [orders, setOrders] = useState<RentalOrder[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const { orders, setOrders, customers, setCustomers, vehicles, setVehicles, isLoading: loading } = useRentalData()
   const [printingOrder, setPrintingOrder] = useState<RentalOrder | null>(null)
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [filterTerm, setFilterTerm] = useState<RentalTerm>("short")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 15
 
@@ -194,7 +203,7 @@ export default function OrdersPage() {
       if (parts.length === 3) {
         const now = new Date()
         now.setHours(0, 0, 0, 0)
-        const end = new Date(parts[2], parts[1] - 1, parts[0])
+        const end = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]))
         end.setHours(0, 0, 0, 0)
         return end < now
       }
@@ -225,12 +234,13 @@ export default function OrdersPage() {
   const [orderToDelete, setOrderToDelete] = useState<RentalOrder | null>(null)
   const [formData, setFormData] = useState({
     customerId: "",
-    vehicleId: "",
+    vehicleIds: [] as string[],
     startDate: "",
     endDate: "",
     deposit: "",
     commissionHome: "",
     homeName: "",
+    rentalTerm: "short" as RentalTerm,
   })
   const [editFormData, setEditFormData] = useState({
     customerId: "",
@@ -243,6 +253,7 @@ export default function OrdersPage() {
     status: "pending" as RentalOrder["status"],
     commissionHome: "",
     homeName: "",
+    rentalTerm: "short" as RentalTerm,
   })
 
   // #9 Server-side search
@@ -267,8 +278,9 @@ export default function OrdersPage() {
   )
 
   const filteredVehiclesForSelect = vehicles.filter(v => 
-    v.name.toLowerCase().includes(vehicleSearch.toLowerCase()) || 
-    (v.licensePlate && v.licensePlate.toLowerCase().includes(vehicleSearch.toLowerCase()))
+    (v.name.toLowerCase().includes(vehicleSearch.toLowerCase()) || 
+    (v.licensePlate && v.licensePlate.toLowerCase().includes(vehicleSearch.toLowerCase()))) &&
+    !formData.vehicleIds.includes(v.id)
   )
 
   useEffect(() => {
@@ -281,79 +293,7 @@ export default function OrdersPage() {
   }, [isDialogOpen])
 
   // Load data from Supabase
-  const loadData = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true)
 
-      // Check if user is demo account (quy79)
-      const isDemoAccount = user?.username === "quy79"
-
-      if (isDemoAccount) {
-        setVehicles([])
-        setCustomers([])
-        setOrders([])
-        setLoading(false)
-        return
-      }
-
-      const [vehiclesData, customersData, rentalsData] = await Promise.all([
-        fetchVehicles(),
-        fetchCustomers(),
-        fetchRentals(),
-      ])
-      setVehicles(vehiclesData || [])
-      setCustomers(customersData || [])
-
-      // Sort rentals by created_at descending (newest first) - client-side backup
-      const sortedRentals = (rentalsData || []).sort((a, b) => {
-        const dateA = new Date(a.created_at || 0).getTime()
-        const dateB = new Date(b.created_at || 0).getTime()
-        return dateB - dateA // DESC (newest first)
-      })
-      
-      // Generate rentalCode for each rental if not already present
-      const rentalsWithCodes = sortedRentals.map((rental) => {
-        if (!rental.rentalCode) {
-          const code = generateRentalCodeFromUUID(
-            rental.customerName,
-            rental.licensePlate,
-            rental.startDate,
-            rental.id
-          )
-          return { ...rental, rentalCode: code }
-        }
-        return rental
-      })
-      
-      setOrders(rentalsWithCodes)
-    } catch (error) {
-      console.error('Error loading data:', error)
-    } finally {
-      if (showLoading) setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadData(true)
-
-    // Subscribe to real-time changes
-    const channel = supabase
-      .channel("orders-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "rentals" }, () => {
-        loadData(false)
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "vehicles" }, () => {
-        loadData(false)
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, () => {
-        loadData(false)
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [loadData])
 
   const todayVN = useMemo(() => {
     const d = new Date()
@@ -362,7 +302,7 @@ export default function OrdersPage() {
 
   const filteredOrders = useMemo(() => {
     const base = serverSearchOrders !== null ? serverSearchOrders : orders
-    return base.filter((order) => {
+    const filtered = base.filter((order) => {
       const q = searchQuery.toLowerCase()
       const matchesSearch = !q || serverSearchOrders !== null ||
         (order.rentalCode || order.id || "").toLowerCase().includes(q) ||
@@ -376,30 +316,79 @@ export default function OrdersPage() {
       else if (filterStatus === "pickup_today") matchesStatus = order.status === "pending" && order.startDate === todayVN
       else matchesStatus = order.status === filterStatus
 
-      return matchesSearch && matchesStatus
+      const matchesTerm = getRentalTerm(order) === filterTerm
+
+      return matchesSearch && matchesStatus && matchesTerm
     })
-  }, [orders, serverSearchOrders, searchQuery, filterStatus, todayVN])
+
+    // Sort: Overdue -> Active (Renting) -> Pending -> Completed -> Cancelled
+    return [...filtered].sort((a, b) => {
+      const getPriority = (order: RentalOrder) => {
+        if (isOrderOverdue(order)) return 1
+        if (order.status === "active") return 2
+        if (order.status === "pending") return 3
+        if (order.status === "completed") return 4
+        if (order.status === "cancelled") return 5
+        return 6
+      }
+      const priorityA = getPriority(a)
+      const priorityB = getPriority(b)
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB
+      }
+      // If same priority, sort by creation date descending
+      const timeA = new Date(a.created_at || a.createdAt || 0).getTime()
+      const timeB = new Date(b.created_at || b.createdAt || 0).getTime()
+      return timeB - timeA
+    })
+  }, [orders, serverSearchOrders, searchQuery, filterStatus, filterTerm, todayVN])
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, filterStatus])
+  }, [searchQuery, filterStatus, filterTerm])
 
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredOrders.length / itemsPerPage)
+  }, [filteredOrders])
 
-  const orderStats = {
-    total: orders.length,
-    active: orders.filter((o) => o.status === "active").length,
-    overdue: orders.filter((o) => isOrderOverdue(o)).length,
-    completed: orders.filter((o) => o.status === "completed").length,
-    revenue: orders
-      .filter((o) => o.status === "completed")
-      .reduce((sum, o) => sum + (o.revenue || o.totalPrice || 0), 0),
-  }
+  const paginatedOrders = useMemo(() => {
+    return filteredOrders.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    )
+  }, [filteredOrders, currentPage])
+
+  const orderStats = useMemo(() => {
+    const now = new Date()
+    const month = now.getMonth()
+    const year = now.getFullYear()
+    const scoped = orders.filter((o) => getRentalTerm(o) === filterTerm)
+    const newThisMonth = scoped.filter((o) => {
+      const raw = o.created_at || o.createdAt
+      if (!raw) return false
+      const d = new Date(raw)
+      if (Number.isNaN(d.getTime())) return false
+      return d.getMonth() === month && d.getFullYear() === year
+    }).length
+
+    return {
+      total: scoped.length,
+      active: scoped.filter((o) => o.status === "active").length,
+      overdue: scoped.filter((o) => isOrderOverdue(o)).length,
+      completed: scoped.filter((o) => o.status === "completed").length,
+      revenue: scoped
+        .filter((o) => o.status === "completed")
+        .reduce((sum, o) => sum + (o.revenue || o.totalPrice || 0), 0),
+      month: month + 1,
+      newThisMonth,
+    }
+  }, [orders, filterTerm])
+
+  const termCounts = useMemo(() => ({
+    short: orders.filter((o) => getRentalTerm(o) === "short").length,
+    long: orders.filter((o) => getRentalTerm(o) === "long").length,
+  }), [orders])
 
   const formatPrice = (n: number) => `${n.toLocaleString("vi-VN")}đ`
 
@@ -479,9 +468,14 @@ export default function OrdersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const vehicle = vehicles.find((v) => v.id === formData.vehicleId)
-    if (!vehicle) {
-      alert("⚠️ Vui lòng chọn xe thuê!")
+    if (formData.vehicleIds.length === 0) {
+      showWarning("Vui lòng chọn ít nhất một xe thuê!")
+      return
+    }
+
+    const selectedVehicles = vehicles.filter((v) => formData.vehicleIds.includes(v.id))
+    if (selectedVehicles.length === 0) {
+      showWarning("Vui lòng chọn ít nhất một xe thuê!")
       return
     }
 
@@ -489,22 +483,7 @@ export default function OrdersPage() {
     const endDate = new Date(formData.endDate)
     
     if (startDate > endDate) {
-      alert("⚠️ Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!")
-      return
-    }
-
-    const conflictingRental = orders.find((order) => {
-      if (order.vehicleId !== vehicle.id) return false
-      if (order.status === "cancelled") return false
-      
-      const orderStart = new Date(order.startDate.split('/').reverse().join('-'))
-      const orderEnd = new Date(order.endDate.split('/').reverse().join('-'))
-      
-      return !(endDate < orderStart || startDate > orderEnd)
-    })
-    
-    if (conflictingRental) {
-      alert(`⚠️ Xe "${vehicle.name}" (${vehicle.licensePlate}) đã được thuê trong khoảng thời gian này!\n\nKhách: ${conflictingRental.customerName}\nNgày: ${formatDisplayDate(conflictingRental.startDate)} - ${formatDisplayDate(conflictingRental.endDate)}\nTrạng thái: ${conflictingRental.status}`)
+      showWarning("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!")
       return
     }
 
@@ -514,11 +493,11 @@ export default function OrdersPage() {
     try {
       if (isNewCustomer) {
         if (!newCustomerName.trim()) {
-          alert("⚠️ Vui lòng nhập tên khách hàng!")
+          showWarning("Vui lòng nhập tên khách hàng!")
           return
         }
         if (!newCustomerCCCD.trim()) {
-          alert("⚠️ Vui lòng nhập số CCCD khách hàng!")
+          showWarning("Vui lòng nhập số CCCD khách hàng!")
           return
         }
 
@@ -550,7 +529,7 @@ export default function OrdersPage() {
         })
 
         if (!newCust) {
-          alert("❌ Không thể tạo khách hàng mới")
+          showError("Không thể tạo khách hàng mới")
           return
         }
 
@@ -559,7 +538,7 @@ export default function OrdersPage() {
       } else {
         const customer = customers.find((c) => c.id === formData.customerId)
         if (!customer) {
-          alert("⚠️ Vui lòng chọn khách hàng!")
+          showWarning("Vui lòng chọn khách hàng!")
           return
         }
         customerId = customer.id
@@ -567,16 +546,22 @@ export default function OrdersPage() {
       }
 
       const totalDays = calculateTotalDays(formData.startDate, formData.endDate)
-      const totalPrice = totalDays * vehicle.pricePerDay
       const startDateVN = toStoredDateValue(formData.startDate)
       const now = new Date().toISOString()
 
-      const commissionHomeVal = hasCommission ? (parseMoneyInput(formData.commissionHome) || 0) : 0
-      const homeNameVal = hasCommission ? formData.homeName.trim() : ""
+      // Split deposit and commission equally among all selected vehicles
+      const totalDeposit = parseMoneyInput(formData.deposit) || 0
+      const dividedDeposit = Math.round(totalDeposit / selectedVehicles.length)
 
-      const { data, error } = await supabase
-        .from('rentals')
-        .insert([{
+      const totalCommission = hasCommission ? (parseMoneyInput(formData.commissionHome) || 0) : 0
+      const dividedCommission = Math.round(totalCommission / selectedVehicles.length)
+
+      const homeNameVal = hasCommission ? formData.homeName.trim() : ""
+      const termPayload = buildRentalTermPayload(formData.rentalTerm, "")
+
+      const insertPayloads = selectedVehicles.map((vehicle) => {
+        const totalPrice = totalDays * vehicle.pricePerDay
+        return {
           customerId,
           customerName,
           vehicleId: vehicle.id,
@@ -587,39 +572,57 @@ export default function OrdersPage() {
           totalDays,
           pricePerDay: vehicle.pricePerDay,
           totalPrice,
-          deposit: parseMoneyInput(formData.deposit),
+          deposit: dividedDeposit,
           extraFees: 0,
-          notes: "",
+          notes: termPayload.notes,
           revenue: 0,
           status: "pending",
           created_at: now,
-          commissionHome: commissionHomeVal,
+          commissionHome: dividedCommission,
           homeName: homeNameVal,
-        }])
+          rentalTerm: termPayload.rentalTerm,
+        }
+      })
+
+      let { data, error } = await supabase
+        .from('rentals')
+        .insert(insertPayloads)
         .select()
 
+      if (error && /rentalTerm/i.test(error.message || "")) {
+        const withoutCols = insertPayloads.map(({ rentalTerm: _omit, ...rest }) => rest)
+        ;({ data, error } = await supabase.from('rentals').insert(withoutCols).select())
+      }
+
       if (error) {
-        console.error("Error creating rental:", error)
-        alert(`❌ Lỗi: ${error.message}`)
+        console.error("Error creating rentals:", error)
+        showError(`Lỗi: ${error.message}`)
         return
       }
 
       if (data && data.length > 0) {
-        const newRental = data[0]
-        const rentalCode = generateRentalCodeFromUUID(customerName, vehicle.licensePlate, startDateVN, newRental.id)
-        const orderWithCode = { ...newRental, rentalCode }
-        setOrders([orderWithCode, ...orders])
-        if (user) logger.addRental(user.username, user.displayName, customerName, vehicle.name)
+        const ordersWithCode = data.map((newRental) => {
+          const rentalCode = generateRentalCodeFromUUID(customerName, newRental.licensePlate, startDateVN, newRental.id)
+          return { ...newRental, rentalCode, rentalTerm: formData.rentalTerm }
+        })
+        setOrders([...ordersWithCode, ...orders])
+
+        // Add action logs for each rented vehicle
+        if (user) {
+          selectedVehicles.forEach((vehicle) => {
+            logger.addRental(user.username, user.displayName, customerName, vehicle.name)
+          })
+        }
         resetForm()
       }
     } catch (error) {
-      console.error("Exception creating rental:", error)
-      alert(`❌ Lỗi tạo đơn thuê`)
+      console.error("Exception creating rentals:", error)
+      showError(`Lỗi tạo đơn thuê`)
     }
   }
 
   const resetForm = () => {
-    setFormData({ customerId: "", vehicleId: "", startDate: "", endDate: "", deposit: "", commissionHome: "", homeName: "" })
+    setFormData({ customerId: "", vehicleIds: [], startDate: "", endDate: "", deposit: "", commissionHome: "", homeName: "", rentalTerm: "short" })
     setIsNewCustomer(false)
     setNewCustomerName("")
     setNewCustomerPhone("")
@@ -641,10 +644,11 @@ export default function OrdersPage() {
       endDate: parseVNToISODate(order.endDate),
       deposit: formatMoneyInput(order.deposit.toString()),
       extraFees: formatMoneyInput(order.extraFees.toString()),
-      notes: order.notes,
+      notes: stripRentalTermFromNotes(order.notes),
       status: order.status,
       commissionHome: formatMoneyInput((order.commissionHome || 0).toString()),
       homeName: order.homeName || "",
+      rentalTerm: getRentalTerm(order),
     })
     setIsEditDialogOpen(true)
   }
@@ -663,25 +667,26 @@ export default function OrdersPage() {
     const endDate = new Date(editFormData.endDate)
     
     if (startDate > endDate) {
-      alert("⚠️ Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!")
+      showWarning("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!")
       return
     }
 
-    const conflictingRental = orders.find((order) => {
-      if (order.id === editingOrder.id) return false // Ignore current order
-      if (order.vehicleId !== vehicle.id) return false
-      if (order.status === "cancelled") return false // Ignore cancelled rentals
-      
-      const orderStart = new Date(order.startDate.split('/').reverse().join('-'))
-      const orderEnd = new Date(order.endDate.split('/').reverse().join('-'))
-      
-      return !(endDate < orderStart || startDate > orderEnd)
-    })
-    
-    if (conflictingRental) {
-      alert(`⚠️ Xe "${vehicle.name}" (${vehicle.licensePlate}) đã được thuê trong khoảng thời gian này!\n\nKhách: ${conflictingRental.customerName}\nNgày: ${formatDisplayDate(conflictingRental.startDate)} - ${formatDisplayDate(conflictingRental.endDate)}\nTrạng thái: ${conflictingRental.status}`)
-      return
-    }
+    // TEMP: tắt kiểm tra trùng lịch để nhập đơn cũ trong quá khứ
+    // const conflictingRental = orders.find((order) => {
+    //   if (order.id === editingOrder.id) return false // Ignore current order
+    //   if (order.vehicleId !== vehicle.id) return false
+    //   if (order.status === "cancelled") return false // Ignore cancelled rentals
+    //   
+    //   const orderStart = new Date(order.startDate.split('/').reverse().join('-'))
+    //   const orderEnd = new Date(order.endDate.split('/').reverse().join('-'))
+    //   
+    //   return !(endDate < orderStart || startDate > orderEnd)
+    // })
+    // 
+    // if (conflictingRental) {
+    //   showWarning(`Xe "${vehicle.name}" (${vehicle.licensePlate}) đã được thuê trong khoảng thời gian này!`, `Khách: ${conflictingRental.customerName}\nNgày: ${formatDisplayDate(conflictingRental.startDate)} - ${formatDisplayDate(conflictingRental.endDate)}\nTrạng thái: ${conflictingRental.status}`)
+    //   return
+    // }
 
     try {
       const newExtraFees = parseMoneyInput(editFormData.extraFees)
@@ -706,10 +711,8 @@ export default function OrdersPage() {
         newRevenue = newDeposit + newExtraFees
       }
       
-      // Update to Supabase
-      const { error } = await supabase
-        .from('rentals')
-        .update({
+      const termPayload = buildRentalTermPayload(editFormData.rentalTerm, editFormData.notes.trim())
+      const updatePayload = {
           customerId: customer.id,
           customerName: customer.name,
           vehicleId: vehicle.id,
@@ -722,17 +725,27 @@ export default function OrdersPage() {
           totalPrice,
           deposit: newDeposit,
           extraFees: newExtraFees,
-          notes: editFormData.notes.trim(),
+          notes: termPayload.notes,
           status: editFormData.status,
           revenue: newRevenue,
           commissionHome: newCommissionHome,
           homeName: newHomeName,
-        })
+          rentalTerm: termPayload.rentalTerm,
+        }
+
+      let { error } = await supabase
+        .from('rentals')
+        .update(updatePayload)
         .eq('id', editingOrder.id)
+
+      if (error && /rentalTerm/i.test(error.message || "")) {
+        const { rentalTerm: _omit, ...withoutCol } = updatePayload
+        ;({ error } = await supabase.from('rentals').update(withoutCol).eq('id', editingOrder.id))
+      }
 
       if (error) {
         console.error("Error updating rental:", error)
-        alert(`❌ Lỗi: ${error.message}`)
+        showError(`Lỗi: ${error.message}`)
         return
       }
 
@@ -751,11 +764,12 @@ export default function OrdersPage() {
         totalPrice,
         deposit: newDeposit,
         extraFees: newExtraFees,
-        notes: editFormData.notes.trim(),
+        notes: termPayload.notes,
         status: editFormData.status,
         revenue: newRevenue,
         commissionHome: newCommissionHome,
         homeName: newHomeName,
+        rentalTerm: editFormData.rentalTerm,
       }
 
       setOrders(orders.map((o) => (o.id === editingOrder.id ? updatedOrder : o)))
@@ -764,7 +778,7 @@ export default function OrdersPage() {
       setEditingOrder(null)
     } catch (error) {
       console.error("Exception updating rental:", error)
-      alert(`❌ Lỗi cập nhật đơn thuê`)
+      showError(`Lỗi cập nhật đơn thuê`)
     }
   }
 
@@ -825,7 +839,7 @@ export default function OrdersPage() {
 
       if (error) {
         console.error("Error updating rental status:", error)
-        alert(`❌ Lỗi: ${error.message}`)
+        showError(`Lỗi: ${error.message}`)
         return
       }
 
@@ -834,7 +848,7 @@ export default function OrdersPage() {
       if (user) logger.log(user.username, user.displayName, 'Chỉnh sửa', 'Đơn thuê', `Cập nhật đơn ${orderId}: ${statusLabels[newStatus]}`)
     } catch (error) {
       console.error("Exception updating rental status:", error)
-      alert(`❌ Lỗi cập nhật trạng thái đơn thuê`)
+      showError(`Lỗi cập nhật trạng thái đơn thuê`)
     }
   }
 
@@ -876,18 +890,18 @@ export default function OrdersPage() {
       setOrderToDelete(null)
     } catch (error) {
       console.error("Error deleting rental:", error)
-      alert("Lỗi khi xóa đơn thuê: " + (error as any).message)
+      showError("Lỗi khi xóa đơn thuê: " + (error as any).message)
     }
   }
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-10 bg-gray-200 rounded"></div>
-          <div className="h-96 bg-gray-200 rounded"></div>
+      <ModulePageShell module="rental">
+        <div className="space-y-6">
+          <div className="h-16 skeleton rounded-[var(--radius-container)]" />
+          <div className="h-96 skeleton rounded-[var(--radius-container)]" />
         </div>
-      </div>
+      </ModulePageShell>
     )
   }
 
@@ -895,17 +909,17 @@ export default function OrdersPage() {
     <ModulePageShell module="rental">
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent className="bg-white border-gray-200 rounded-2xl max-w-sm">
+        <DialogContent className="bg-white border-slate-200 rounded-[var(--radius-container)] max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-red-600 flex items-center gap-2">
+            <DialogTitle className="text-rose-600 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Xác nhận xoá đơn thuê
             </DialogTitle>
-            <DialogDescription className="text-gray-600 text-base mt-2">
-              Bạn có chắc chắn muốn xoá đơn thuê mã <span className="font-semibold text-gray-800">"{orderToDelete?.rentalCode || orderToDelete?.id}"</span> của khách hàng <span className="font-semibold text-gray-800">"{orderToDelete?.customerName}"</span> không?
-              <p className="text-sm text-red-600 mt-2">⚠️ Hành động này không thể hoàn tác!</p>
+            <DialogDescription className="text-slate-600 text-base mt-2">
+              Bạn có chắc chắn muốn xoá đơn thuê mã <span className="font-semibold text-slate-800">"{orderToDelete?.rentalCode || orderToDelete?.id}"</span> của khách hàng <span className="font-semibold text-slate-800">"{orderToDelete?.customerName}"</span> không?
+              <p className="text-meta text-rose-600 mt-2">Hành động này không thể hoàn tác.</p>
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 justify-end mt-6">
@@ -915,13 +929,13 @@ export default function OrdersPage() {
                 setDeleteConfirmOpen(false)
                 setOrderToDelete(null)
               }}
-              className="border-gray-300"
+              className="border-slate-300"
             >
               Hủy
             </Button>
             <Button
               onClick={handleConfirmDelete}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="bg-rose-600 text-white hover:bg-rose-700"
             >
               Xoá
             </Button>
@@ -938,18 +952,65 @@ export default function OrdersPage() {
           { label: "Đơn thuê" },
         ]}
         actions={
-          <Button
-            className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 rounded-xl text-sm"
-            onClick={() => setIsDialogOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Tạo đơn thuê mới
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              role="group"
+              aria-label="Lọc loại thuê"
+              className="inline-flex items-center p-1 rounded-[var(--radius-control)] bg-slate-100 border border-slate-200"
+            >
+              {([
+                { value: "short" as const, label: "Thuê ngắn hạn" },
+                { value: "long" as const, label: "Thuê dài hạn" },
+              ]).map((opt) => {
+                const active = filterTerm === opt.value
+                const count = termCounts[opt.value]
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setFilterTerm(opt.value)}
+                    className={cn(
+                      "relative h-10 px-3.5 rounded-[calc(var(--radius-control)-2px)] text-body font-semibold ui-transition",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-1",
+                      active
+                        ? "bg-blue-600 text-white shadow-[0_2px_8px_rgba(37,99,235,0.28)]"
+                        : "text-slate-500 hover:text-slate-800 hover:bg-white/80"
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      {opt.label}
+                      <span
+                        className={cn(
+                          "inline-flex min-w-[1.35rem] h-5 items-center justify-center rounded-md px-1 text-label font-bold tabular-nums",
+                          active
+                            ? "bg-white/20 text-white"
+                            : "bg-slate-200/80 text-slate-600"
+                        )}
+                      >
+                        {count}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700 rounded-[var(--radius-control)] h-11 font-semibold text-body ui-transition"
+              onClick={() => {
+                setFormData((prev) => ({ ...prev, rentalTerm: filterTerm }))
+                setIsDialogOpen(true)
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Tạo đơn thuê mới
+            </Button>
+          </div>
         }
       />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <EntityFormDialogContent accent="purple">
+          <EntityFormDialogContent accent="blue">
             <EntityFormHeader
               title="Tạo đơn thuê mới"
               description="Nhập thông tin đơn thuê xe"
@@ -968,7 +1029,7 @@ export default function OrdersPage() {
 
                   {!isNewCustomer ? (
                     <div className="space-y-2 relative">
-                      <Label htmlFor="customer" className="text-gray-600">Tìm kiếm khách hàng</Label>
+                      <Label htmlFor="customer" className="text-slate-600">Tìm kiếm khách hàng</Label>
                       <Input
                         placeholder="Nhập tên, số điện thoại hoặc ID khách..."
                         value={customerSearch}
@@ -978,15 +1039,15 @@ export default function OrdersPage() {
                           setFormData(prev => ({ ...prev, customerId: "" }))
                         }}
                         onFocus={() => setShowCustomerDropdown(true)}
-                        className="bg-white border-gray-200 rounded-xl"
+                        className="bg-white border-slate-200 rounded-xl"
                         required={!isNewCustomer}
                       />
                       {showCustomerDropdown && (
                         <>
                           <div className="fixed inset-0 z-40" onClick={() => setShowCustomerDropdown(false)} />
-                          <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto mt-1">
+                          <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto mt-1">
                             {filteredCustomersForSelect.length === 0 ? (
-                              <div className="p-3 text-sm text-gray-500 text-center">Không tìm thấy khách hàng nào</div>
+                              <div className="p-3 text-sm text-slate-500 text-center">Không tìm thấy khách hàng nào</div>
                             ) : (
                               filteredCustomersForSelect.map((customer) => (
                                 <div
@@ -996,9 +1057,9 @@ export default function OrdersPage() {
                                     setCustomerSearch(`${customer.name} (${customer.phone || 'Không có SĐT'})`)
                                     setShowCustomerDropdown(false)
                                   }}
-                                  className="p-3 text-sm text-gray-700 hover:bg-slate-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
+                                  className="p-3 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 last:border-0"
                                 >
-                                  <span className="font-semibold">{customer.name}</span> {customer.phone ? `- ${customer.phone}` : ''} <span className="text-xs text-gray-400">({customer.id})</span>
+                                  <span className="font-semibold">{customer.name}</span> {customer.phone ? `- ${customer.phone}` : ''} <span className="text-sm text-slate-400">({customer.id})</span>
                                 </div>
                               ))
                             )}
@@ -1010,58 +1071,58 @@ export default function OrdersPage() {
                   ) : (
                     <div className="space-y-3">
                       <EntityFormInfoBox>
-                        ℹ️ <strong>Khách mới:</strong> Điền đầy đủ thông tin bắt buộc (*) để tạo hồ sơ khách hàng
+                        ℹ <strong>Khách mới:</strong> Điền đầy đủ thông tin bắt buộc (*) để tạo hồ sơ khách hàng
                       </EntityFormInfoBox>
                       <div className="space-y-1">
-                        <Label className="text-gray-600 text-xs">Tên khách hàng <span className="text-red-500">*</span></Label>
-                        <p className="text-xs text-slate-400">Họ và tên đầy đủ của khách</p>
+                        <Label className="text-slate-600 text-sm">Tên khách hàng <span className="text-blue-500">*</span></Label>
+                        <p className="text-sm text-slate-400">Họ và tên đầy đủ của khách</p>
                         <Input
                           placeholder="VD: Nguyễn Văn A"
                           value={newCustomerName}
                           onChange={(e) => setNewCustomerName(e.target.value)}
-                          className="bg-white border-gray-200 rounded-xl h-9 text-sm"
+                          className="bg-white border-slate-200 rounded-xl h-9 text-sm"
                           required={isNewCustomer}
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-gray-600 text-xs">Số điện thoại</Label>
-                        <p className="text-xs text-slate-400">Dùng để liên lạc với khách hàng</p>
+                        <Label className="text-slate-600 text-sm">Số điện thoại</Label>
+                        <p className="text-sm text-slate-400">Dùng để liên lạc với khách hàng</p>
                         <Input
                           placeholder="VD: 0912345678"
                           value={newCustomerPhone}
                           onChange={(e) => setNewCustomerPhone(e.target.value)}
-                          className="bg-white border-gray-200 rounded-xl h-9 text-sm"
+                          className="bg-white border-slate-200 rounded-xl h-9 text-sm"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-gray-600 text-xs">Số CCCD khách <span className="text-red-500">*</span></Label>
-                        <p className="text-xs text-slate-400">Số chứng minh thư hoặc CCCD</p>
+                        <Label className="text-slate-600 text-sm">Số CCCD khách <span className="text-blue-500">*</span></Label>
+                        <p className="text-sm text-slate-400">Số chứng minh thư hoặc CCCD</p>
                         <Input
                           placeholder="VD: 123456789012"
                           value={newCustomerCCCD}
                           onChange={(e) => setNewCustomerCCCD(e.target.value)}
-                          className="bg-white border-gray-200 rounded-xl h-9 text-sm"
+                          className="bg-white border-slate-200 rounded-xl h-9 text-sm"
                           required={isNewCustomer}
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-gray-600 text-xs">📸 Ảnh khách (tùy chọn)</Label>
-                        <p className="text-xs text-slate-400">Ảnh chân dung để xác minh danh tính</p>
+                        <Label className="text-slate-600 text-sm">Ảnh khách (tùy chọn)</Label>
+                        <p className="text-sm text-slate-400">Ảnh chân dung để xác minh danh tính</p>
                         <Input
                           type="file"
                           accept="image/*"
                           onChange={(e) => setNewCustomerPhoto(e.target.files?.[0] || null)}
-                          className="bg-white border-gray-200 rounded-xl h-9 text-sm p-1"
+                          className="bg-white border-slate-200 rounded-xl h-9 text-sm p-1"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-gray-600 text-xs">📸 Ảnh CCCD khách (tùy chọn)</Label>
-                        <p className="text-xs text-slate-400">Ảnh mặt trước chứng minh thư</p>
+                        <Label className="text-slate-600 text-sm">Ảnh CCCD khách (tùy chọn)</Label>
+                        <p className="text-sm text-slate-400">Ảnh mặt trước chứng minh thư</p>
                         <Input
                           type="file"
                           accept="image/*"
                           onChange={(e) => setNewCustomerCCCDFront(e.target.files?.[0] || null)}
-                          className="bg-white border-gray-200 rounded-xl h-9 text-sm p-1"
+                          className="bg-white border-slate-200 rounded-xl h-9 text-sm p-1"
                         />
                       </div>
                     </div>
@@ -1069,80 +1130,123 @@ export default function OrdersPage() {
                 </EntityFormSection>
 
                 <EntityFormSection title="🚗 2. Thông tin xe thuê" description="Chọn xe trong danh sách xe sẵn sàng để cho thuê">
-                  <div className="space-y-2 relative">
-                    <Label htmlFor="vehicle" className="text-gray-600 text-xs">Chọn xe thuê <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-slate-400">Tìm theo tên xe hoặc biển số</p>
+                  <div className="space-y-3 relative">
+                    <Label htmlFor="vehicle" className="text-slate-600 text-sm">Chọn xe thuê <span className="text-blue-500">*</span></Label>
+                    
+                    {/* Selected vehicles badges */}
+                    {formData.vehicleIds.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-100 rounded-xl">
+                        {formData.vehicleIds.map((vId) => {
+                          const vObj = vehicles.find(v => v.id === vId)
+                          if (!vObj) return null
+                          return (
+                            <span 
+                              key={vId} 
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 shadow-sm"
+                            >
+                              <span>{vObj.name} ({vObj.licensePlate})</span>
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  setFormData(prev => ({ 
+                                    ...prev, 
+                                    vehicleIds: prev.vehicleIds.filter(id => id !== vId) 
+                                  }))
+                                }}
+                                className="hover:bg-blue-100 rounded p-0.5 text-blue-500 hover:text-blue-700 transition"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-slate-400">Tìm theo tên xe hoặc biển số (có thể chọn nhiều xe cùng lúc)</p>
                     <Input
-                      placeholder="VD: Toyota Vios hoặc 75AA-12345..."
+                      placeholder="VD: Wave Alpha hoặc 75F1-12345..."
                       value={vehicleSearch}
                       onChange={(e) => {
                         setVehicleSearch(e.target.value)
                         setShowVehicleDropdown(true)
-                        setFormData(prev => ({ ...prev, vehicleId: "" }))
                       }}
                       onFocus={() => setShowVehicleDropdown(true)}
-                      className="bg-white border-gray-200 rounded-xl"
-                      required
+                      className="bg-white border-slate-200 rounded-xl"
                     />
+                    
                     {showVehicleDropdown && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowVehicleDropdown(false)} />
-                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto mt-1">
+                        <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto mt-1">
                           {filteredVehiclesForSelect.length === 0 ? (
-                            <div className="p-3 text-sm text-gray-500 text-center">Không tìm thấy xe nào</div>
+                            <div className="p-3 text-sm text-slate-500 text-center">Không tìm thấy xe nào khả dụng</div>
                           ) : (
                             filteredVehiclesForSelect.map((vehicle) => (
                               <div
                                 key={vehicle.id}
                                 onClick={() => {
-                                  setFormData(prev => ({ ...prev, vehicleId: vehicle.id }))
-                                  setVehicleSearch(`${vehicle.name} - ${vehicle.licensePlate}`)
+                                  setFormData(prev => ({ 
+                                    ...prev, 
+                                    vehicleIds: [...prev.vehicleIds, vehicle.id] 
+                                  }))
+                                  setVehicleSearch("")
                                   setShowVehicleDropdown(false)
                                 }}
-                                className="p-3 text-sm text-gray-700 hover:bg-slate-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
+                                className="p-3 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 last:border-0"
                               >
-                                <span className="font-semibold">{vehicle.name}</span> - <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono font-semibold">{vehicle.licensePlate}</span> <span className="text-xs text-gray-500">({vehicle.pricePerDay.toLocaleString("vi-VN")}đ/ngày)</span>
+                                <span className="font-semibold">{vehicle.name}</span> - <span className="text-sm bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono font-semibold">{vehicle.licensePlate}</span> <span className="text-sm text-slate-500">({vehicle.pricePerDay.toLocaleString("vi-VN")}đ/ngày)</span>
                               </div>
                             ))
                           )}
                         </div>
                       </>
                     )}
-                    <input type="hidden" name="vehicleId" value={formData.vehicleId} required />
                   </div>
                 </EntityFormSection>
 
-                <EntityFormSection title="📋 3. Chi tiết hợp đồng thuê" description="Nhập ngày thuê, thời hạn và tiền đặt cọc">
+                <EntityFormSection title="📋 3. Chi tiết hợp đồng thuê" description="Nhập loại thuê, ngày thuê, thời hạn và tiền đặt cọc">
+                  <div className="space-y-1">
+                    <Label className="text-slate-600 text-sm">Loại thuê <span className="text-blue-500">*</span></Label>
+                    <EntityFormToggle
+                      value={formData.rentalTerm}
+                      onChange={(val) => setFormData({ ...formData, rentalTerm: val as RentalTerm })}
+                      options={[
+                        { value: "short", label: "Thuê ngắn hạn" },
+                        { value: "long", label: "Thuê dài hạn" },
+                      ]}
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <Label htmlFor="startDate" className="text-gray-600 text-xs">Ngày bắt đầu <span className="text-red-500">*</span></Label>
-                      <p className="text-xs text-slate-400">Ngày khách nhận xe</p>
+                      <Label htmlFor="startDate" className="text-slate-600 text-sm">Ngày bắt đầu <span className="text-blue-500">*</span></Label>
+                      <p className="text-sm text-slate-400">Ngày khách nhận xe</p>
                       <Input
                         id="startDate"
                         type="date"
                         value={formData.startDate}
                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                        className="bg-white border-gray-200 rounded-xl h-9 text-sm"
+                        className="bg-white border-slate-200 rounded-xl h-9 text-sm"
                         required
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="endDate" className="text-gray-600 text-xs">Ngày kết thúc <span className="text-red-500">*</span></Label>
-                      <p className="text-xs text-slate-400">Ngày khách trả xe</p>
+                      <Label htmlFor="endDate" className="text-slate-600 text-sm">Ngày kết thúc <span className="text-blue-500">*</span></Label>
+                      <p className="text-sm text-slate-400">Ngày khách trả xe</p>
                       <Input
                         id="endDate"
                         type="date"
                         value={formData.endDate}
                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                        className="bg-white border-gray-200 rounded-xl h-9 text-sm"
+                        className="bg-white border-slate-200 rounded-xl h-9 text-sm"
                         required
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="deposit" className="text-gray-600 text-xs">Tiền đặt cọc <span className="text-red-500">*</span></Label>
-                    <p className="text-xs text-slate-400">Tiền cọc để bảo vệ xe (thường 30-50% giá thuê)</p>
+                    <Label htmlFor="deposit" className="text-slate-600 text-sm">Tiền đặt cọc <span className="text-blue-500">*</span></Label>
+                    <p className="text-sm text-slate-400">Tiền cọc để bảo vệ xe (thường 30-50% giá thuê)</p>
                     <Input
                       id="deposit"
                       type="text"
@@ -1152,7 +1256,7 @@ export default function OrdersPage() {
                         setFormData({ ...formData, deposit: formatted })
                       }}
                       placeholder="VD: 500.000"
-                      className="bg-white border-gray-200 rounded-xl font-mono h-9 text-sm"
+                      className="bg-white border-slate-200 rounded-xl font-mono h-9 text-sm"
                       required
                     />
                   </div>
@@ -1163,28 +1267,28 @@ export default function OrdersPage() {
                       type="checkbox"
                       checked={hasCommission}
                       onChange={(e) => setHasCommission(e.target.checked)}
-                      className="rounded border-gray-300 text-red-600 focus:ring-red-500 h-4 w-4"
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
                     />
-                    <Label htmlFor="hasCommission" className="text-gray-700 text-sm font-semibold cursor-pointer">Chia hoa hồng</Label>
+                    <Label htmlFor="hasCommission" className="text-slate-700 text-sm font-semibold cursor-pointer">Chia hoa hồng</Label>
                   </div>
 
                   {hasCommission && (
                     <div className="grid grid-cols-1 gap-3 pt-2 bg-amber-50 p-3 rounded-xl border border-amber-100">
                       <div className="space-y-1">
-                        <Label htmlFor="homeName" className="text-gray-600 text-xs">Tên Home</Label>
-                        <p className="text-xs text-slate-400">Tên đơn vị/người chia hoa hồng</p>
+                        <Label htmlFor="homeName" className="text-slate-600 text-sm">Tên Home</Label>
+                        <p className="text-sm text-slate-400">Tên đơn vị/người chia hoa hồng</p>
                         <Input
                           id="homeName"
                           type="text"
                           value={formData.homeName}
                           onChange={(e) => setFormData({ ...formData, homeName: e.target.value })}
                           placeholder="VD: Home ABC"
-                          className="bg-white border-gray-200 rounded-xl h-9 text-sm"
+                          className="bg-white border-slate-200 rounded-xl h-9 text-sm"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label htmlFor="commissionHome" className="text-gray-600 text-xs">Chia hoa hồng cho Home (VND/ngày)</Label>
-                        <p className="text-xs text-slate-400">Tiền hoa hồng/ngày cho đơn vị (VD: 20.000đ/ngày)</p>
+                        <Label htmlFor="commissionHome" className="text-slate-600 text-sm">Chia hoa hồng cho Home (VND/ngày)</Label>
+                        <p className="text-sm text-slate-400">Tiền hoa hồng/ngày cho đơn vị (VD: 20.000đ/ngày)</p>
                         <Input
                           id="commissionHome"
                           type="text"
@@ -1194,7 +1298,7 @@ export default function OrdersPage() {
                             setFormData({ ...formData, commissionHome: formatted })
                           }}
                           placeholder="VD: 20.000"
-                          className="bg-white border-gray-200 rounded-xl font-mono h-9 text-sm"
+                          className="bg-white border-slate-200 rounded-xl font-mono h-9 text-sm"
                         />
                       </div>
                     </div>
@@ -1214,7 +1318,7 @@ export default function OrdersPage() {
               </EntityFormBody>
 
               <EntityFormFooter
-                accent="purple"
+                accent="blue"
                 onCancel={resetForm}
                 submitLabel="Tạo đơn"
               />
@@ -1223,11 +1327,23 @@ export default function OrdersPage() {
         </Dialog>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <RentalKpiCard label="Tổng đơn thuê" value={orderStats.total} sublabel={`${filteredOrders.length} đang lọc`} />
-          <RentalKpiCard label="Đang thuê" value={orderStats.active} sublabel="Đơn hiện hành" valueClassName="text-red-700" />
-          <RentalKpiCard label="Quá hạn" value={orderStats.overdue} sublabel="Cần theo dõi" valueClassName="text-amber-700" />
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
           <RentalKpiCard
+            variant="hero"
+            label="Tổng đơn thuê"
+            value={orderStats.total}
+            sublabel={
+              <>
+                <span className="block">{filteredOrders.length} đang lọc</span>
+                <span className="block mt-0.5">
+                  Số đơn tháng {orderStats.month}: {orderStats.newThisMonth} đơn
+                </span>
+              </>
+            }
+          />
+          <RentalKpiCard variant="hero" label="Đang thuê" value={orderStats.active} sublabel="Đơn hiện hành" valueClassName="text-blue-700" />
+          <RentalKpiCard variant="hero" label="Quá hạn" value={orderStats.overdue} sublabel="Cần theo dõi" valueClassName="text-amber-700" />
+          <RentalKpiCard variant="hero"
             label="Hoàn thành"
             value={orderStats.completed}
             sublabel={`Doanh thu: ${formatPrice(orderStats.revenue)}`}
@@ -1236,24 +1352,24 @@ export default function OrdersPage() {
         </div>
 
       <ModuleSectionCard
-        title="Danh sách đơn thuê"
-        description={`Quản lý ${filteredOrders.length} đơn thuê`}
+        title="Danh sách đơn thuê xe"
+        description={`${filteredOrders.length} đơn · ${getRentalTermLabel(filterTerm)}`}
         filters={
           <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-            <div className="relative flex-1 md:w-64">
+            <div className="relative flex-1 lg:w-48">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 placeholder="Mã đơn, khách, xe..."
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className={cn(rentalFilterInputClass, "pl-9")}
+                className={cn(rentalFilterInputClass, "pl-9 h-10")}
               />
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full md:w-48 h-9 rounded-xl border-slate-200 text-sm bg-white">
+              <SelectTrigger className="w-full lg:w-44 h-10 rounded-xl border-slate-200 text-sm bg-white">
                 <SelectValue placeholder="Trạng thái" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white border-slate-100 rounded-xl">
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
                 <SelectItem value="pickup_today">Nhận xe hôm nay</SelectItem>
                 <SelectItem value="return_today">Trả xe hôm nay</SelectItem>
@@ -1271,7 +1387,9 @@ export default function OrdersPage() {
           {filteredOrders.length === 0 ? (
             <div className="text-center py-12">
               <ClipboardList className="w-12 h-12 text-slate-200 mx-auto mb-2" />
-              <p className="text-slate-400 text-sm">Chưa có đơn thuê nào</p>
+              <p className="text-slate-400 text-sm">
+                Chưa có đơn {filterTerm === "long" ? "thuê dài hạn" : "thuê ngắn hạn"} nào
+              </p>
             </div>
           ) : (
             <>
@@ -1279,17 +1397,17 @@ export default function OrdersPage() {
                 desktop={
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="module-table-head border-b border-slate-100 bg-slate-50/50">
-                        <th className={cn(rentalTableHeadClass, "w-12 text-center")}>STT</th>
-                        <th className={rentalTableHeadClass}>Khách hàng</th>
-                        <th className={rentalTableHeadClass}>Xe thuê</th>
-                        <th className={cn(rentalTableHeadClass, "text-center")}>Thời gian</th>
-                        <th className={cn(rentalTableHeadClass, "text-center")}>Số ngày</th>
-                        <th className={cn(rentalTableHeadClass, "text-right")}>Giá/ngày</th>
-                        <th className={cn(rentalTableHeadClass, "text-right")}>Tổng tiền</th>
-                        <th className={cn(rentalTableHeadClass, "text-right")}>Doanh thu</th>
-                        <th className={cn(rentalTableHeadClass, "text-center")}>Trạng thái</th>
-                        <th className={cn(rentalTableHeadClass, "text-right")}>Thao tác</th>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className={cn(rentalTableHeadClass, "w-12 text-center text-slate-600")}>STT</th>
+                        <th className={cn(rentalTableHeadClass, "text-slate-600")}>Khách hàng</th>
+                        <th className={cn(rentalTableHeadClass, "text-slate-600")}>Xe thuê</th>
+                        <th className={cn(rentalTableHeadClass, "text-center text-slate-600")}>Thời gian</th>
+                        <th className={cn(rentalTableHeadClass, "text-center text-slate-600")}>Số ngày</th>
+                        <th className={cn(rentalTableHeadClass, "text-right text-slate-600")}>Giá/ngày</th>
+                        <th className={cn(rentalTableHeadClass, "text-right text-slate-600")}>Tổng tiền</th>
+                        <th className={cn(rentalTableHeadClass, "text-right text-slate-600")}>Doanh thu</th>
+                        <th className={cn(rentalTableHeadClass, "text-center text-slate-600")}>Trạng thái</th>
+                        <th className={cn(rentalTableHeadClass, "text-right text-slate-600")}>Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50 text-sm text-slate-700">
@@ -1297,65 +1415,70 @@ export default function OrdersPage() {
                         const isOverdue = isOrderOverdue(order)
                         return (
                           <tr key={order.id} className="module-table-row hover:bg-slate-50/50 transition-colors">
-                            <td className="py-3.5 px-4 text-center text-xs text-slate-400 font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                            <td className="py-3.5 px-4">
+                            <td className="py-3.5 px-4 text-center text-sm text-slate-400 font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                            <td className="py-3.5 px-4 min-w-[100px] max-w-[140px]">
                               <button
-                                className="font-semibold text-slate-900 hover:text-slate-700 hover:underline text-left capitalize"
+                                className="font-semibold text-slate-900 hover:text-slate-700 hover:underline text-left capitalize line-clamp-2 block"
                                 onClick={() => openCustomerDetail(order.customerId)}
                               >
                                 {order.customerName}
                               </button>
                             </td>
                             <td className="py-3.5 px-4">
-                              <button
-                                className="font-semibold text-slate-900 hover:text-slate-700 hover:underline text-left block"
-                                onClick={() => openVehicleDetail(order.vehicleId)}
-                              >
-                                {order.vehicleName}
-                              </button>
-                              <span className="text-[10px] text-slate-400 font-mono">{order.licensePlate}</span>
+                              <div className="flex flex-col gap-1.5">
+                                <button
+                                  className="font-bold text-slate-800 text-[15px] hover:text-slate-700 hover:underline text-left block"
+                                  onClick={() => openVehicleDetail(order.vehicleId)}
+                                >
+                                  {order.vehicleName}
+                                </button>
+                                <div>
+                                  <span className="inline-block bg-white text-slate-800 border border-slate-350 font-mono font-bold px-2.5 py-1 rounded text-sm shadow-sm tracking-wider uppercase whitespace-nowrap">
+                                    {order.licensePlate}
+                                  </span>
+                                </div>
+                              </div>
                             </td>
-                            <td className="py-3.5 px-4 text-center text-xs text-slate-700 whitespace-nowrap">
-                              <span>{formatDisplayDate(order.startDate)}</span>
-                              <span className="text-slate-400 mx-1.5">→</span>
-                              <span>{formatDisplayDate(order.endDate)}</span>
+                            <td className="py-3.5 px-4 text-center text-sm font-semibold text-slate-700">
+                              <div className="whitespace-nowrap">{formatDisplayDate(order.startDate)}</div>
+                              <div className="whitespace-nowrap"><span className="text-slate-400 text-sm mr-1">→</span>{formatDisplayDate(order.endDate)}</div>
                             </td>
-                            <td className="py-3.5 px-4 text-center font-semibold text-slate-700">{order.totalDays} ngày</td>
-                            <td className="py-3.5 px-4 text-right font-mono text-xs tabular-nums">{order.pricePerDay.toLocaleString("vi-VN")} đ</td>
+                            <td className="py-3.5 px-4 text-center font-semibold text-slate-700 whitespace-nowrap">{order.totalDays} ngày</td>
+                            <td className="py-3.5 px-4 text-right font-mono text-sm tabular-nums text-blue-600 font-bold whitespace-nowrap">{order.pricePerDay.toLocaleString("vi-VN")} đ</td>
                             <td className="py-3.5 px-4 text-right">
-                              <div className={`font-bold font-mono text-xs tabular-nums ${isOverdue ? "text-red-600" : "text-slate-900"}`}>{order.totalPrice.toLocaleString("vi-VN")} đ</div>
-                              <div className="flex items-center justify-end gap-1 mt-0.5">
+                              <div className="font-bold font-mono text-sm tabular-nums text-blue-600 whitespace-nowrap">{order.totalPrice.toLocaleString("vi-VN")} đ</div>
+                              <div className="flex items-center justify-end mt-0.5">
                                 {order.deposit > 0 ? (
-                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">Đã cọc {order.deposit.toLocaleString("vi-VN")}đ</span>
+                                  <span className="text-sm font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100 whitespace-nowrap">Đã cọc {order.deposit.toLocaleString("vi-VN")}đ</span>
                                 ) : (
-                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">Chưa cọc</span>
+                                  <span className="text-sm font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100 whitespace-nowrap">Chưa cọc</span>
                                 )}
                               </div>
                             </td>
-                            <td className="py-3.5 px-4 text-right font-mono text-xs">
+                            <td className="py-3.5 px-4 text-right font-mono text-sm whitespace-nowrap">
                               {order.revenue > 0 ? (
-                                <span className={`font-semibold tabular-nums ${order.status === "cancelled" ? "text-amber-600" : "text-emerald-600"}`}>
+                                <span className="font-bold tabular-nums text-blue-600">
                                   {order.revenue.toLocaleString("vi-VN")} đ
                                 </span>
                               ) : (
                                 <span className="text-slate-400">—</span>
                               )}
                             </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${rentalOrderStatusBadgeClass(order.status, isOverdue)}`}>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <span className={`inline-flex items-center text-sm font-bold px-2 py-0.5 rounded-full border ${rentalOrderStatusBadgeClass(order.status, isOverdue)}`}>
                                 {getRentalOrderStatusLabel(order.status, isOverdue)}
                               </span>
                             </td>
                             <td className="py-3.5 px-4">
-                              <div className="flex items-center justify-end gap-1 flex-wrap">
+                              <div className="flex items-center justify-end gap-1 flex-nowrap">
                                 {/* #5 Quick action */}
                                 {order.status === "pending" && (
-                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-700 hover:text-emerald-800 rounded-lg hover:bg-emerald-50 gap-1" onClick={() => updateOrderStatus(order.id, "active")} title="Giao xe">
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-sm text-emerald-700 hover:text-emerald-800 rounded-lg hover:bg-emerald-50 gap-1" onClick={() => updateOrderStatus(order.id, "active")} title="Giao xe">
                                     <Play className="w-3 h-3" />Giao
                                   </Button>
                                 )}
                                 {(order.status === "active" || isOrderOverdue(order)) && (
-                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-blue-700 hover:text-blue-800 rounded-lg hover:bg-blue-50 gap-1" onClick={() => openCompleteWithLateFee(order.id)} title="Hoàn thành">
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-sm text-blue-700 hover:text-blue-800 rounded-lg hover:bg-blue-50 gap-1" onClick={() => openCompleteWithLateFee(order.id)} title="Hoàn thành">
                                     <CheckCircle className="w-3 h-3" />Xong
                                   </Button>
                                 )}
@@ -1369,7 +1492,7 @@ export default function OrdersPage() {
                                   <Settings className="w-3.5 h-3.5" />
                                 </Button>
                                 {user?.permissions.canDelete && (
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50" onClick={() => handleDeleteClick(order)} title="Xóa">
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 rounded-lg hover:bg-blue-50" onClick={() => handleDeleteClick(order)} title="Xóa">
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </Button>
                                 )}
@@ -1388,13 +1511,18 @@ export default function OrdersPage() {
                       <div className="flex justify-between items-start gap-2">
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-800 truncate">{order.customerName}</p>
-                          <p className="text-xs text-slate-500 truncate">{order.vehicleName} · {order.licensePlate}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="text-sm text-slate-700 font-medium">{order.vehicleName}</span>
+                            <span className="inline-block bg-white text-slate-800 border border-slate-350 font-mono font-bold px-1.5 py-0.5 rounded text-sm shadow-sm tracking-wider uppercase">
+                              {order.licensePlate}
+                            </span>
+                          </div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${rentalOrderStatusBadgeClass(order.status, isOverdue)}`}>
+                        <span className={`text-sm font-bold px-2 py-0.5 rounded-full border shrink-0 ${rentalOrderStatusBadgeClass(order.status, isOverdue)}`}>
                           {getRentalOrderStatusLabel(order.status, isOverdue)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
                         <Calendar className="w-3 h-3 shrink-0" />
                         <span>{formatDisplayDate(order.startDate)} → {formatDisplayDate(order.endDate)}</span>
                         <span className="text-slate-300">·</span>
@@ -1403,48 +1531,67 @@ export default function OrdersPage() {
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-1.5">
                           {order.deposit > 0 ? (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">Đã cọc</span>
+                            <span className="text-sm font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">Đã cọc</span>
                           ) : (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">Chưa cọc</span>
+                            <span className="text-sm font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100">Chưa cọc</span>
                           )}
                           {(order.status === "pending") && (
-                            <button className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-600 text-white" onClick={() => updateOrderStatus(order.id, "active")}>Giao xe</button>
+                            <button className="text-sm font-semibold px-2 py-0.5 rounded bg-emerald-600 text-white" onClick={() => updateOrderStatus(order.id, "active")}>Giao xe</button>
                           )}
                           {(order.status === "active" || isOverdue) && (
-                            <button className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-600 text-white" onClick={() => openCompleteWithLateFee(order.id)}>Xong</button>
+                            <button className="text-sm font-semibold px-2 py-0.5 rounded bg-blue-600 text-white" onClick={() => openCompleteWithLateFee(order.id)}>Xong</button>
                           )}
                         </div>
-                        <span className="font-bold text-red-600 tabular-nums text-xs">{order.totalPrice.toLocaleString("vi-VN")} đ</span>
+                        <span className="font-bold text-blue-600 tabular-nums text-sm">{order.totalPrice.toLocaleString("vi-VN")} đ</span>
+                      </div>
+                      
+                      {/* Mobile action bar */}
+                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100/50">
+                        <span className="text-[10px] text-slate-400">Đơn #{order.rentalCode || order.id.substring(0, 8)}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setViewingOrder(order)}
+                            className="text-slate-500 hover:text-blue-600 p-1"
+                            title="Xem chi tiết"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setPrintingOrder(order)}
+                            className="text-slate-500 hover:text-blue-600 p-1"
+                            title="In hợp đồng"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openEditDialog(order)}
+                            className="text-slate-500 hover:text-blue-600 p-1"
+                            title="Chỉnh sửa"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </button>
+                          {user?.permissions.canDelete && (
+                            <button
+                              onClick={() => handleDeleteClick(order)}
+                              className="text-blue-600 hover:text-blue-700 p-1"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </ModuleMobileCard>
                   )
                 })}
               />
-              {totalPages > 1 && (
-                <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-100">
-                  <span className="text-xs text-slate-500 mr-2">
-                    Trang {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs border-slate-200 rounded-xl"
-                  >
-                    Trước
-                  </Button>
-                  <Button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs border-slate-200 rounded-xl"
-                  >
-                    Tiếp
-                  </Button>
-                </div>
-              )}
+              <ModulePagination
+                page={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredOrders.length}
+                itemLabel="đơn"
+                onPageChange={setCurrentPage}
+              />
             </>
           )}
         </CardContent>
@@ -1452,181 +1599,283 @@ export default function OrdersPage() {
       </div>
 
       <Dialog open={!!viewingOrder} onOpenChange={(open) => !open && setViewingOrder(null)}>
-        <EntityFormDialogContent accent="purple" maxWidth="2xl">
-          <EntityFormHeader
-            title={`Chi tiết đơn thuê ${viewingOrder?.id ?? ""}`}
-            description="Thông tin chi tiết và tài chính đơn thuê"
-          />
-          {viewingOrder && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Khách hàng</p>
-                  <button 
-                    className="font-medium text-red-600 hover:underline"
-                    onClick={() => {
-                      openCustomerDetail(viewingOrder.customerId)
-                    }}
-                  >
-                    {viewingOrder.customerName}
-                  </button>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Xe thuê</p>
-                  <button 
-                    className="font-medium text-red-600 hover:underline"
-                    onClick={() => {
-                      openVehicleDetail(viewingOrder.vehicleId)
-                    }}
-                  >
-                    {viewingOrder.vehicleName}
-                  </button>
-                  <p className="text-xs text-gray-400">{viewingOrder.licensePlate}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Ngày bắt đầu</p>
-                  <p className="font-medium text-gray-800">{formatDisplayDate(viewingOrder.startDate)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Ngày kết thúc</p>
-                  <p className="font-medium text-gray-800">{formatDisplayDate(viewingOrder.endDate)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Số ngày thuê</p>
-                  <p className="font-medium text-gray-800">{viewingOrder.totalDays} ngày</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Giá thuê/ngày</p>
-                  <p className="font-medium text-gray-800">{viewingOrder.pricePerDay.toLocaleString("vi-VN")} VND</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Tiền cọc</p>
-                  <p className="font-medium text-gray-800">{viewingOrder.deposit.toLocaleString("vi-VN")} VND</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Tổng tiền thuê</p>
-                  <p className="font-medium text-red-600 text-lg">{viewingOrder.totalPrice.toLocaleString("vi-VN")} VND</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Phí phát sinh</p>
-                  <p className="font-medium text-gray-800">
-                    {viewingOrder.extraFees > 0
-                      ? `${viewingOrder.extraFees.toLocaleString("vi-VN")} VND`
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Ghi chú</p>
-                <p className="text-sm font-medium text-gray-800 whitespace-pre-wrap">
-                  {viewingOrder.notes || "—"}
-                </p>
-              </div>
-              
-              {/* Thông tin doanh thu */}
-              <div className="pt-4 border-t border-gray-100">
-                <div className="bg-gray-50 p-4 rounded-xl space-y-2">
-                  <h4 className="font-medium text-gray-800 text-sm">Thông tin tài chính</h4>
-                  {viewingOrder.status === "pending" && (
-                    <p className="text-sm text-gray-500">Chưa có doanh thu (đang chờ nhận xe)</p>
-                  )}
-                  {viewingOrder.status === "active" && (
-                    <p className="text-sm text-gray-500">Chưa có doanh thu (đang trong quá trình thuê)</p>
-                  )}
-                  {viewingOrder.status === "completed" && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Tiền thuê xe:</span>
-                        <span className="font-medium text-emerald-600">+{viewingOrder.totalPrice.toLocaleString("vi-VN")} VND</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Trả cọc cho khách:</span>
-                        <span className="font-medium text-gray-500">-{viewingOrder.deposit.toLocaleString("vi-VN")} VND</span>
-                      </div>
-                      <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
-                        <span className="text-gray-700 font-medium">Doanh thu thực nhận:</span>
-                        <span className="font-bold text-emerald-600">{viewingOrder.revenue.toLocaleString("vi-VN")} VND</span>
-                      </div>
-                    </div>
-                  )}
-                  {viewingOrder.status === "cancelled" && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Khách hủy - Mất cọc:</span>
-                        <span className="font-medium text-amber-600">+{viewingOrder.deposit.toLocaleString("vi-VN")} VND</span>
-                      </div>
-                      <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
-                        <span className="text-gray-700 font-medium">Doanh thu:</span>
-                        <span className="font-bold text-amber-600">{viewingOrder.revenue.toLocaleString("vi-VN")} VND</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+        <EntityFormDialogContent accent="blue" maxWidth="lg">
+          {viewingOrder && (() => {
+            const o = viewingOrder
+            const overdue = isOrderOverdue(o)
+            const term = getRentalTerm(o)
+            const notesClean = stripRentalTermFromNotes(o.notes)
+            const commissionTotal = (o.commissionHome || 0) * (o.totalDays || 0)
+            return (
+              <>
+                <EntityFormHeader
+                  title={`Chi tiết đơn: ${o.rentalCode || o.id.slice(0, 8)}`}
+                  description={`${formatDisplayDate(o.startDate)} → ${formatDisplayDate(o.endDate)} · ${o.totalDays} ngày`}
+                />
+                <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn(
+                      "inline-flex items-center text-sm font-bold px-2.5 py-1 rounded-full border",
+                      rentalOrderStatusBadgeClass(o.status, overdue)
+                    )}>
+                      {getRentalOrderStatusLabel(o.status, overdue)}
+                    </span>
+                    <span className={cn(
+                      "inline-flex items-center text-sm font-bold px-2.5 py-1 rounded-full border",
+                      term === "long"
+                        ? "bg-violet-50 text-violet-700 border-violet-100"
+                        : "bg-sky-50 text-sky-700 border-sky-100"
+                    )}>
+                      {getRentalTermLabel(term)}
+                    </span>
+                    {o.deposit > 0 ? (
+                      <span className="inline-flex items-center text-sm font-bold px-2.5 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-100">
+                        Đã cọc
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-sm font-bold px-2.5 py-1 rounded-full border bg-amber-50 text-amber-700 border-amber-100">
+                        Chưa cọc
+                      </span>
+                    )}
+                  </div>
 
-              {/* VietQR Billing code */}
-              <div className="pt-4 border-t border-gray-100">
-                <div className="bg-slate-950 text-white p-4 rounded-xl flex flex-col items-center space-y-2">
-                  <div className="flex items-center justify-between w-full border-b border-slate-800 pb-2">
-                    <span className="text-xs bg-purple-600 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Mã QR Techcombank</span>
-                    <span className="text-xs text-slate-400">Mr. Lập - {LAVIECAR_BUSINESS.hotline}</span>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-blue-600 uppercase">Tổng tiền thuê</p>
+                      <p className="text-lg font-extrabold text-blue-700 tabular-nums">{formatPrice(o.totalPrice + (o.extraFees || 0))}</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-amber-600 uppercase">Tiền cọc</p>
+                      <p className="text-sm font-extrabold text-amber-700 tabular-nums">{formatPrice(o.deposit)}</p>
+                    </div>
+                    <div className={cn(
+                      "border rounded-xl p-3",
+                      o.status === "completed"
+                        ? "bg-emerald-50 border-emerald-100"
+                        : o.status === "cancelled"
+                          ? "bg-amber-50 border-amber-100"
+                          : "bg-slate-50 border-slate-100"
+                    )}>
+                      <p className={cn(
+                        "text-sm font-semibold uppercase",
+                        o.status === "completed" ? "text-emerald-600"
+                          : o.status === "cancelled" ? "text-amber-600"
+                          : "text-slate-500"
+                      )}>Doanh thu</p>
+                      <p className={cn(
+                        "text-sm font-extrabold tabular-nums",
+                        o.status === "completed" ? "text-emerald-700"
+                          : o.status === "cancelled" ? "text-amber-700"
+                          : "text-slate-400"
+                      )}>
+                        {o.status === "pending" || o.status === "active"
+                          ? "Chưa chốt"
+                          : formatPrice(o.revenue || 0)}
+                      </p>
+                    </div>
                   </div>
-                  
-                  <div className="w-40 h-40 bg-white p-1.5 rounded-lg overflow-hidden flex items-center justify-center my-1.5 shadow-md">
-                    <img 
-                      src={`https://img.vietqr.io/image/TCB-${LAVIECAR_BUSINESS.bank.accountNumber}-qr_only.png?amount=${viewingOrder.totalPrice}&addInfo=${encodeURIComponent(`TT DON HONG ${viewingOrder.rentalCode || viewingOrder.id}`)}&accountName=${encodeURIComponent(LAVIECAR_BUSINESS.bank.accountHolderLatin)}`}
-                      alt="VietQR"
-                      className="w-full h-full object-contain"
-                    />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div
+                      className="bg-slate-50 border border-slate-100 rounded-xl p-3 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                      onClick={() => {
+                        setViewingOrder(null)
+                        openCustomerDetail(o.customerId)
+                      }}
+                    >
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Khách hàng</p>
+                      <p className="font-bold text-slate-900">{o.customerName}</p>
+                      <p className="text-sm text-blue-500 mt-0.5 underline decoration-dashed">Nhấn để xem chi tiết</p>
+                    </div>
+                    <div
+                      className="bg-slate-50 border border-slate-100 rounded-xl p-3 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                      onClick={() => {
+                        setViewingOrder(null)
+                        openVehicleDetail(o.vehicleId)
+                      }}
+                    >
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Xe thuê</p>
+                      <p className="font-bold text-slate-900">{o.vehicleName}</p>
+                      <p className="text-sm font-mono text-slate-500">{o.licensePlate || "Chưa biển"}</p>
+                      <p className="text-sm text-blue-500 mt-0.5 underline decoration-dashed">Nhấn để xem chi tiết</p>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-300 text-center space-y-0.5">
-                    <p className="font-bold text-purple-400 text-sm">Số tiền: {viewingOrder.totalPrice.toLocaleString("vi-VN")} VND</p>
-                    <p className="text-slate-400">Dùng App Ngân hàng quét QR để thanh toán cọc hoặc tất toán đơn</p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Nhận xe</p>
+                      <p className="text-sm font-bold text-slate-800">{formatDisplayDate(o.startDate)}</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Trả xe</p>
+                      <p className="text-sm font-bold text-slate-800">{formatDisplayDate(o.endDate)}</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Số ngày</p>
+                      <p className="text-sm font-bold text-slate-800">{o.totalDays} ngày</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Giá/ngày</p>
+                      <p className="text-sm font-bold text-slate-800 tabular-nums">{formatPrice(o.pricePerDay)}</p>
+                    </div>
+                    {o.extraFees > 0 && (
+                      <div className="bg-orange-50 border border-orange-100 rounded-xl p-3">
+                        <p className="text-sm font-semibold text-orange-600 uppercase mb-0.5">Phí phát sinh</p>
+                        <p className="text-sm font-bold text-orange-700 tabular-nums">{formatPrice(o.extraFees)}</p>
+                      </div>
+                    )}
+                    {commissionTotal > 0 && (
+                      <div className="bg-violet-50 border border-violet-100 rounded-xl p-3">
+                        <p className="text-sm font-semibold text-violet-600 uppercase mb-0.5">HH Home{o.homeName ? ` · ${o.homeName}` : ""}</p>
+                        <p className="text-sm font-bold text-violet-700 tabular-nums">{formatPrice(commissionTotal)}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {notesClean && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Ghi chú</p>
+                      <p className="text-sm text-slate-700 whitespace-pre-line">{notesClean}</p>
+                    </div>
+                  )}
+
+                  {(o.status === "completed" || o.status === "cancelled") && (
+                    <div className="border border-slate-100 rounded-xl overflow-hidden">
+                      <div className="bg-slate-50 px-3 py-2">
+                        <p className="text-sm font-bold text-slate-700">Chi tiết tài chính</p>
+                      </div>
+                      <div className="p-3 space-y-1.5">
+                        {o.status === "completed" ? (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-500">Tiền thuê xe</span>
+                              <span className="font-bold text-emerald-600 tabular-nums">+{formatPrice(o.totalPrice)}</span>
+                            </div>
+                            {o.extraFees > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">Phí phát sinh</span>
+                                <span className="font-bold text-emerald-600 tabular-nums">+{formatPrice(o.extraFees)}</span>
+                              </div>
+                            )}
+                            {commissionTotal > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">Hoa hồng Home</span>
+                                <span className="font-bold text-rose-600 tabular-nums">-{formatPrice(commissionTotal)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-500">Trả cọc khách</span>
+                              <span className="font-medium text-slate-400 tabular-nums">-{formatPrice(o.deposit)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm pt-2 border-t border-slate-100">
+                              <span className="font-bold text-slate-800">Doanh thu thực nhận</span>
+                              <span className="font-extrabold text-emerald-700 tabular-nums">{formatPrice(o.revenue || 0)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-500">Khách hủy — mất cọc</span>
+                              <span className="font-bold text-amber-600 tabular-nums">+{formatPrice(o.deposit)}</span>
+                            </div>
+                            {o.extraFees > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-slate-500">Phí phát sinh</span>
+                                <span className="font-bold text-amber-600 tabular-nums">+{formatPrice(o.extraFees)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-sm pt-2 border-t border-slate-100">
+                              <span className="font-bold text-slate-800">Doanh thu</span>
+                              <span className="font-extrabold text-amber-700 tabular-nums">{formatPrice(o.revenue || 0)}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-950 text-white rounded-xl p-4 flex flex-col items-center gap-2">
+                    <div className="flex items-center justify-between w-full border-b border-slate-800 pb-2">
+                      <span className="text-sm bg-blue-600 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                        QR SHB
+                      </span>
+                      <span className="text-sm text-slate-400">{QUY79_BUSINESS.hotline}</span>
+                    </div>
+                    <div className="w-36 h-36 bg-white p-1.5 rounded-lg overflow-hidden shadow-md">
+                      <img
+                        src={`https://img.vietqr.io/image/SHB-${QUY79_BUSINESS.bank.accountNumber}-qr_only.png?amount=${o.totalPrice + (o.extraFees || 0)}&addInfo=${encodeURIComponent(`TT 3L MOTO ${o.rentalCode || o.id}`)}&accountName=${encodeURIComponent(QUY79_BUSINESS.bank.accountHolderLatin)}`}
+                        alt="VietQR"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <p className="font-bold text-blue-400 text-sm tabular-nums">{formatPrice(o.totalPrice + (o.extraFees || 0))}</p>
+                    <p className="text-sm text-slate-400 text-center">Quét QR để thanh toán cọc / tất toán</p>
+                  </div>
+
+                  <div className="flex gap-2 pt-1 flex-wrap">
+                    {o.status === "pending" && (
+                      <>
+                        <Button
+                          className="flex-1 h-9 text-sm bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => {
+                            updateOrderStatus(o.id, "active")
+                            setViewingOrder(null)
+                          }}
+                        >
+                          Xác nhận giao xe
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1 h-9 text-sm"
+                          onClick={() => {
+                            updateOrderStatus(o.id, "cancelled")
+                            setViewingOrder(null)
+                          }}
+                        >
+                          Hủy đơn
+                        </Button>
+                      </>
+                    )}
+                    {(o.status === "active" || overdue) && o.status !== "completed" && o.status !== "cancelled" && (
+                      <Button
+                        className="flex-1 h-9 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => {
+                          setViewingOrder(null)
+                          openCompleteWithLateFee(o.id)
+                        }}
+                      >
+                        Hoàn thành đơn
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-9 text-sm"
+                      onClick={() => {
+                        setViewingOrder(null)
+                        openEditDialog(o)
+                      }}
+                    >
+                      <Settings className="w-3.5 h-3.5 mr-1.5" />
+                      Chỉnh sửa
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-9 text-sm px-3"
+                      onClick={() => setViewingOrder(null)}
+                    >
+                      Đóng
+                    </Button>
                   </div>
                 </div>
-              </div>
-              {viewingOrder.status === "pending" && (
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    className="flex-1 bg-red-600 text-white hover:bg-red-700 rounded-xl"
-                    onClick={() => {
-                      updateOrderStatus(viewingOrder.id, "active")
-                      setViewingOrder(null)
-                    }}
-                  >
-                    Xác nhận giao xe
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1 rounded-xl border-gray-200"
-                    onClick={() => {
-                      updateOrderStatus(viewingOrder.id, "cancelled")
-                      setViewingOrder(null)
-                    }}
-                  >
-                    Hủy đơn
-                  </Button>
-                </div>
-              )}
-              {viewingOrder.status === "active" && (
-                <Button
-                  className="w-full bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl"
-                  onClick={() => {
-                    updateOrderStatus(viewingOrder.id, "completed")
-                    setViewingOrder(null)
-                  }}
-                >
-                  Hoàn thành đơn
-                </Button>
-              )}
-            </div>
-          )}
+              </>
+            )
+          })()}
         </EntityFormDialogContent>
       </Dialog>
 
       {/* Edit Order Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <EntityFormDialogContent accent="purple" maxWidth="2xl">
+        <EntityFormDialogContent accent="blue" maxWidth="2xl">
           <EntityFormHeader
             title={`Sửa đơn thuê ${editingOrder?.id ?? ""}`}
             description="Chỉnh sửa thông tin đơn thuê"
@@ -1634,24 +1883,36 @@ export default function OrdersPage() {
           <form onSubmit={handleEditSubmit}>
             <EntityFormBody>
             <div className="space-y-2">
-              <Label className="text-gray-600">Khách hàng</Label>
-              <Input
-                value={editingOrder?.customerName || ""}
-                disabled
-                className="bg-gray-100 border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+              <Label className="text-slate-600">Loại thuê</Label>
+              <EntityFormToggle
+                value={editFormData.rentalTerm}
+                onChange={(val) => setEditFormData({ ...editFormData, rentalTerm: val as RentalTerm })}
+                options={[
+                  { value: "short", label: "Thuê ngắn hạn" },
+                  { value: "long", label: "Thuê dài hạn" },
+                ]}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-vehicle" className="text-gray-600">Xe thuê</Label>
+              <Label className="text-slate-600">Khách hàng</Label>
+              <Input
+                value={editingOrder?.customerName || ""}
+                disabled
+                className="bg-slate-100 border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-vehicle" className="text-slate-600">Xe thuê</Label>
               <Select
                 value={editFormData.vehicleId}
                 onValueChange={(value) => setEditFormData({ ...editFormData, vehicleId: value })}
               >
-                <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl">
+                <SelectTrigger className="bg-slate-50 border-slate-200 rounded-xl">
                   <SelectValue placeholder="Chọn xe" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border-gray-200 rounded-xl">
+                <SelectContent className="bg-white border-slate-200 rounded-xl">
                   {vehicles.map((vehicle) => (
                     <SelectItem key={vehicle.id} value={vehicle.id}>
                       {vehicle.name} - {vehicle.licensePlate}
@@ -1663,31 +1924,31 @@ export default function OrdersPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-startDate" className="text-gray-600">Ngày bắt đầu</Label>
+                <Label htmlFor="edit-startDate" className="text-slate-600">Ngày bắt đầu</Label>
                 <Input
                   id="edit-startDate"
                   type="date"
                   value={editFormData.startDate}
                   onChange={(e) => setEditFormData({ ...editFormData, startDate: e.target.value })}
-                  className="bg-gray-50 border-gray-200 rounded-xl"
+                  className="bg-slate-50 border-slate-200 rounded-xl"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-endDate" className="text-gray-600">Ngày kết thúc</Label>
+                <Label htmlFor="edit-endDate" className="text-slate-600">Ngày kết thúc</Label>
                 <Input
                   id="edit-endDate"
                   type="date"
                   value={editFormData.endDate}
                   onChange={(e) => setEditFormData({ ...editFormData, endDate: e.target.value })}
-                  className="bg-gray-50 border-gray-200 rounded-xl"
+                  className="bg-slate-50 border-slate-200 rounded-xl"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-deposit" className="text-gray-600">Tiền đặt cọc (VND)</Label>
+              <Label htmlFor="edit-deposit" className="text-slate-600">Tiền đặt cọc (VND)</Label>
               <Input
                 id="edit-deposit"
                 type="text"
@@ -1696,13 +1957,13 @@ export default function OrdersPage() {
                   const formatted = formatMoneyInput(e.target.value)
                   setEditFormData({ ...editFormData, deposit: formatted })
                 }}
-                className="bg-gray-50 border-gray-200 rounded-xl font-mono"
+                className="bg-slate-50 border-slate-200 rounded-xl font-mono"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-extraFees" className="text-gray-600">Phí phát sinh (VND)</Label>
+              <Label htmlFor="edit-extraFees" className="text-slate-600">Phí phát sinh (VND)</Label>
               <Input
                 id="edit-extraFees"
                 type="text"
@@ -1711,25 +1972,25 @@ export default function OrdersPage() {
                   const formatted = formatMoneyInput(e.target.value)
                   setEditFormData({ ...editFormData, extraFees: formatted })
                 }}
-                className="bg-gray-50 border-gray-200 rounded-xl font-mono"
+                className="bg-slate-50 border-slate-200 rounded-xl font-mono"
                 placeholder="0"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-homeName" className="text-gray-600">Tên Home (Homestay giới thiệu)</Label>
+                <Label htmlFor="edit-homeName" className="text-slate-600">Tên Home (Homestay giới thiệu)</Label>
                 <Input
                   id="edit-homeName"
                   type="text"
                   value={editFormData.homeName}
                   onChange={(e) => setEditFormData({ ...editFormData, homeName: e.target.value })}
                   placeholder="VD: Home ABC"
-                  className="bg-gray-50 border-gray-200 rounded-xl"
+                  className="bg-slate-50 border-slate-200 rounded-xl"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-commissionHome" className="text-gray-600">Chia hoa hồng cho Home (VND/ngày)</Label>
+                <Label htmlFor="edit-commissionHome" className="text-slate-600">Chia hoa hồng cho Home (VND/ngày)</Label>
                 <Input
                   id="edit-commissionHome"
                   type="text"
@@ -1739,32 +2000,32 @@ export default function OrdersPage() {
                     setEditFormData({ ...editFormData, commissionHome: formatted })
                   }}
                   placeholder="VD: 20.000"
-                  className="bg-gray-50 border-gray-200 rounded-xl font-mono"
+                  className="bg-slate-50 border-slate-200 rounded-xl font-mono"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-notes" className="text-gray-600">Ghi chú</Label>
+              <Label htmlFor="edit-notes" className="text-slate-600">Ghi chú</Label>
               <Textarea
                 id="edit-notes"
                 value={editFormData.notes}
                 onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
-                className="bg-gray-50 border-gray-200 rounded-xl min-h-20 resize-y"
+                className="bg-slate-50 border-slate-200 rounded-xl min-h-20 resize-y"
                 placeholder="Nhập ghi chú cho đơn thuê..."
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-status" className="text-gray-600">Trạng thái</Label>
+              <Label htmlFor="edit-status" className="text-slate-600">Trạng thái</Label>
               <Select
                 value={editFormData.status}
                 onValueChange={(value: RentalOrder["status"]) => setEditFormData({ ...editFormData, status: value })}
               >
-                <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl">
+                <SelectTrigger className="bg-slate-50 border-slate-200 rounded-xl">
                   <SelectValue placeholder="Chọn trạng thái" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border-gray-200 rounded-xl">
+                <SelectContent className="bg-white border-slate-200 rounded-xl">
                   <SelectItem value="pending">Chờ giao xe</SelectItem>
                   <SelectItem value="active">Đang thuê</SelectItem>
                   <SelectItem value="completed">Hoàn thành</SelectItem>
@@ -1775,7 +2036,7 @@ export default function OrdersPage() {
 
             </EntityFormBody>
             <EntityFormFooter
-              accent="purple"
+              accent="blue"
               onCancel={() => setIsEditDialogOpen(false)}
               submitLabel="Lưu thay đổi"
             />
@@ -1787,267 +2048,322 @@ export default function OrdersPage() {
       <Dialog open={!!viewingCustomer} onOpenChange={(open) => {
         if (!open && !lightboxImage) setViewingCustomer(null)
       }}>
-        <EntityFormDialogContent accent="purple" maxWidth="2xl">
-          <EntityFormHeader
-            title="Chi tiết khách hàng"
-            description="Thông tin hồ sơ khách hàng thuê xe"
-          />
-          {viewingCustomer && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Họ tên</p>
-                  <p className="font-medium text-gray-800">{viewingCustomer.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Mã khách hàng</p>
-                  <p className="font-medium text-gray-800">{viewingCustomer.id}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Số điện thoại</p>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <p className="font-medium text-gray-800">{viewingCustomer.phone}</p>
+        <EntityFormDialogContent accent="blue" maxWidth="lg">
+          {viewingCustomer && (() => {
+            const cust = viewingCustomer
+            const custRentals = orders
+              .filter((r) => r.customerId === cust.id)
+              .sort((a, b) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime())
+            const docImages = [
+              ...(cust.cccdfront?.[0] ? [{ label: "CCCD mặt trước", src: cust.cccdfront[0] }] : []),
+              ...(cust.cccdback?.[0] ? [{ label: "CCCD mặt sau", src: cust.cccdback[0] }] : []),
+              ...(cust.licensefront?.[0] ? [{ label: "GPLX mặt trước", src: cust.licensefront[0] }] : []),
+              ...(cust.licenseback?.[0] ? [{ label: "GPLX mặt sau", src: cust.licenseback[0] }] : []),
+            ]
+            return (
+              <>
+                <EntityFormHeader
+                  title="Chi tiết khách hàng"
+                  description={getRentalCustomerStatusLabel(cust.status)}
+                />
+                <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0">
+                      {cust.customerphoto && cust.customerphoto.length > 0 ? (
+                        <img
+                          src={cust.customerphoto[0]}
+                          alt="Ảnh khách"
+                          className="w-20 h-20 rounded-xl object-cover border border-slate-200 shadow-sm cursor-pointer"
+                          onClick={() => setLightboxImage(cust.customerphoto![0])}
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
+                          <User className="w-8 h-8 text-slate-300" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-lg font-extrabold text-slate-900">{cust.name}</p>
+                      <p className="text-sm text-slate-500 flex items-center gap-1">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-medium text-slate-700">{cust.phone || "Chưa có SĐT"}</span>
+                      </p>
+                      {cust.address && (
+                        <p className="text-sm text-slate-500 flex items-start gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
+                          {cust.address}
+                        </p>
+                      )}
+                      <div className="pt-1">
+                        <span className={cn(
+                          "inline-flex items-center text-sm font-bold px-2 py-0.5 rounded-full border",
+                          rentalCustomerStatusBadgeClass(cust.status)
+                        )}>
+                          {getRentalCustomerStatusLabel(cust.status)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Facebook</p>
-                  <div className="flex items-center gap-2">
-                    <Facebook className="w-4 h-4 text-red-600" />
-                    <a
-                      href={viewingCustomer.facebook || ""}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-red-600 hover:underline truncate"
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Số CCCD / CMND</p>
+                      <p className="text-sm font-bold text-slate-800 font-mono">{cust.idcard || "—"}</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Tổng lần thuê</p>
+                      <p className="text-lg font-extrabold text-slate-800">{cust.totalrentals || custRentals.length} lượt</p>
+                    </div>
+                  </div>
+
+                  {docImages.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-2">Ảnh tài liệu</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {docImages.map((img) => (
+                          <div key={img.label}>
+                            <p className="text-sm font-medium text-slate-400 mb-1">{img.label}</p>
+                            <img
+                              src={img.src}
+                              alt={img.label}
+                              className="w-full rounded-xl border border-slate-200 shadow-sm object-cover aspect-video cursor-pointer"
+                              onClick={() => setLightboxImage(img.src)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {custRentals.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-2">Đơn thuê gần đây</p>
+                      <div className="space-y-1.5">
+                        {custRentals.slice(0, 4).map((r) => (
+                          <div key={r.id} className="flex items-center justify-between text-sm bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 gap-2">
+                            <span className="font-bold text-slate-700 truncate">{r.vehicleName}</span>
+                            <span className="text-slate-400 font-mono shrink-0">{r.licensePlate}</span>
+                            <span className="font-bold tabular-nums text-blue-600 shrink-0">
+                              {(r.totalPrice || 0).toLocaleString("vi-VN")}đ
+                            </span>
+                          </div>
+                        ))}
+                        {custRentals.length > 4 && (
+                          <p className="text-sm text-slate-400 text-center">+{custRentals.length - 4} đơn khác</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-9 text-sm"
+                      onClick={() => setViewingCustomer(null)}
                     >
-                      {(viewingCustomer.facebook || "").replace("https://facebook.com/", "")}
-                    </a>
+                      Đóng
+                    </Button>
                   </div>
                 </div>
-                <div className="col-span-2">
-                  <p className="text-sm text-gray-500">Địa chỉ</p>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <p className="font-medium text-gray-800">{viewingCustomer.address}</p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">CCCD</p>
-                  <p className="font-medium text-gray-800">{viewingCustomer.idcard}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Số lần thuê</p>
-                  <p className="font-medium text-gray-800">{viewingCustomer.totalrentals} lần</p>
-                </div>
-              </div>
-
-              {/* Customer Photo */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-sm text-gray-500 mb-2">Ảnh khách hàng</p>
-                {(viewingCustomer.customerphoto?.length ?? 0) > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {(viewingCustomer.customerphoto || []).map((img, index) => (
-                      <div 
-                        key={index}
-                        className="aspect-square rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage(img)}
-                      >
-                        <img src={img} alt={`Ảnh ${index + 1}`} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-gray-400 bg-gray-50 p-3 rounded-xl">
-                    <ImageIcon className="w-4 h-4" />
-                    <span className="text-sm">Chưa có ảnh</span>
-                  </div>
-                )}
-              </div>
-
-              {/* CCCD Images */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-sm text-gray-500 mb-2">Ảnh CCCD</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Mặt trước</p>
-                    {(viewingCustomer.cccdfront?.length ?? 0) > 0 ? (
-                      <div
-                        className="aspect-video rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage((viewingCustomer.cccdfront || [])[0])}
-                      >
-                        <img src={(viewingCustomer.cccdfront || [])[0]} alt="CCCD mặt trước" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="aspect-video flex items-center justify-center text-gray-400 bg-gray-50 rounded-xl">
-                        <ImageIcon className="w-6 h-6" />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Mặt sau</p>
-                    {(viewingCustomer.cccdback?.length ?? 0) > 0 ? (
-                      <div
-                        className="aspect-video rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage((viewingCustomer.cccdback || [])[0])}
-                      >
-                        <img src={(viewingCustomer.cccdback || [])[0]} alt="CCCD mặt sau" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="aspect-video flex items-center justify-center text-gray-400 bg-gray-50 rounded-xl">
-                        <ImageIcon className="w-6 h-6" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* License Images */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-sm text-gray-500 mb-2">Giấy phép lái xe</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Mặt trước</p>
-                    {(viewingCustomer.licensefront?.length ?? 0) > 0 ? (
-                      <div
-                        className="aspect-video rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage((viewingCustomer.licensefront || [])[0])}
-                      >
-                        <img src={(viewingCustomer.licensefront || [])[0]} alt="GPLX mặt trước" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="aspect-video flex items-center justify-center text-gray-400 bg-gray-50 rounded-xl">
-                        <ImageIcon className="w-6 h-6" />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Mặt sau</p>
-                    {(viewingCustomer.licenseback?.length ?? 0) > 0 ? (
-                      <div
-                        className="aspect-video rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage((viewingCustomer.licenseback || [])[0])}
-                      >
-                        <img src={(viewingCustomer.licenseback || [])[0]} alt="GPLX mặt sau" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="aspect-video flex items-center justify-center text-gray-400 bg-gray-50 rounded-xl">
-                        <ImageIcon className="w-6 h-6" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-end pt-4 mt-4 border-t border-gray-100">
-            <Button variant="outline" onClick={() => setViewingCustomer(null)} className="rounded-xl border-gray-200">
-              Đóng
-            </Button>
-          </div>
+              </>
+            )
+          })()}
         </EntityFormDialogContent>
       </Dialog>
 
-      {/* Vehicle Detail Dialog */}
+      {/* Vehicle Detail Dialog — same layout as /dashboard/vehicles */}
       <Dialog open={!!viewingVehicle} onOpenChange={(open) => {
         if (!open && !lightboxImage) setViewingVehicle(null)
       }}>
-        <EntityFormDialogContent accent="purple" maxWidth="2xl">
-          <EntityFormHeader
-            title="Chi tiết xe"
-            description="Thông tin xe và hình ảnh trong hệ thống cho thuê"
-          />
-          {viewingVehicle && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Loại xe</p>
-                  <p className="font-medium text-gray-800">{viewingVehicle.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Biển số</p>
-                  <p className="font-medium text-gray-800 font-mono">{viewingVehicle.licensePlate}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Màu xe</p>
-                  <p className="font-medium text-gray-800">{viewingVehicle.color}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Trạng thái</p>
-                  <Badge className={vehicleStatusConfig[viewingVehicle.status].className}>
-                    {vehicleStatusConfig[viewingVehicle.status].label}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Giá thuê/ngày</p>
-                  <p className="font-medium text-red-600">{(viewingVehicle.pricePerDay ?? 0).toLocaleString("vi-VN")} VND</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Số KM hiện tại</p>
-                  <p className="font-medium text-gray-800">{(viewingVehicle.current_km ?? 0).toLocaleString("vi-VN")} km</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Giá mua xe</p>
-                  <p className="font-medium text-gray-800">{(viewingVehicle.purchasePrice ?? 0).toLocaleString("vi-VN")} VND</p>
-                </div>
-              </div>
+        <EntityFormDialogContent accent="blue" maxWidth="lg">
+          {viewingVehicle && (() => {
+            const v = viewingVehicle
+            const vId = v.id
+            const completedRev = orders
+              .filter((o) => o.vehicleId === vId && o.status === "completed")
+              .reduce((s, o) => s + (o.revenue || o.totalPrice || 0), 0)
+            const totalRevenue = v.totalRevenue ?? completedRev
+            const profit = v.profit ?? (totalRevenue - (v.purchasePrice || 0))
+            const parseVN = (s: string): Date => {
+              const parts = s?.split("/")
+              if (parts?.length === 3) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]))
+              return new Date(s || 0)
+            }
+            const calcUtil = (days: number) => {
+              const today = new Date(); today.setHours(0, 0, 0, 0)
+              const from = new Date(); from.setDate(today.getDate() - days); from.setHours(0, 0, 0, 0)
+              const vOrders = orders.filter((o) => o.vehicleId === vId && o.status !== "cancelled" && o.status !== "pending")
+              let rented = 0
+              vOrders.forEach((o) => {
+                const s = parseVN(o.startDate); const e = parseVN(o.endDate)
+                const os = s < from ? from : s; const oe = e > today ? today : e
+                if (os <= oe) {
+                  rented += Math.ceil((oe.getTime() - os.getTime()) / 86400000) + 1
+                }
+              })
+              if (rented > days) rented = days
+              return { pct: Math.round((rented / days) * 100) }
+            }
+            const u30 = calcUtil(30)
+            const totalRentalCount = orders.filter((o) => o.vehicleId === vId).length
+            const recentOrders = orders
+              .filter((o) => o.vehicleId === vId)
+              .sort((a, b) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime())
+              .slice(0, 4)
 
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-sm text-gray-500 mb-2">Ghi chú</p>
-                <p className="text-gray-700 bg-gray-50 p-3 rounded-xl">{viewingVehicle.notes || "Không có ghi chú"}</p>
-              </div>
+            return (
+              <>
+                <EntityFormHeader
+                  title={v.name}
+                  description={`${v.licensePlate || "Chưa biển"}${v.color ? ` · ${v.color}` : ""}`}
+                />
+                <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      "inline-flex items-center text-sm font-bold px-2 py-1 rounded-full border",
+                      rentalVehicleStatusBadgeClass(v.status)
+                    )}>
+                      {getRentalVehicleStatusLabel(v.status)}
+                    </span>
+                    {v.category && (
+                      <span className="text-sm text-slate-500">
+                        Phân loại: <span className="font-medium text-slate-800">{v.category === "car" ? "Ô tô" : "Xe máy"}</span>
+                      </span>
+                    )}
+                  </div>
 
-              {/* Vehicle Images */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-sm text-gray-500 mb-2">Ảnh xe</p>
-                {(viewingVehicle.vehicleImages?.length ?? 0) > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {viewingVehicle.vehicleImages.map((img, index) => (
-                      <div 
-                        key={index}
-                        className="aspect-square rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage(img)}
-                      >
-                        <img src={img} alt={`Xe ${index + 1}`} className="w-full h-full object-cover" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-blue-600 uppercase">Giá thuê/ngày</p>
+                      <p className="text-sm font-extrabold text-blue-700 tabular-nums">{formatPrice(v.pricePerDay)}</p>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-amber-600 uppercase">Giá mua</p>
+                      <p className="text-sm font-extrabold text-amber-700 tabular-nums">{formatPrice(v.purchasePrice)}</p>
+                    </div>
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-emerald-600 uppercase">Tổng thu</p>
+                      <p className="text-sm font-extrabold text-emerald-700 tabular-nums">{formatPrice(totalRevenue)}</p>
+                    </div>
+                    <div className={cn(
+                      "border rounded-xl p-3",
+                      profit >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-blue-50 border-blue-100"
+                    )}>
+                      <p className={cn(
+                        "text-sm font-semibold uppercase",
+                        profit >= 0 ? "text-emerald-600" : "text-blue-600"
+                      )}>Lợi nhuận</p>
+                      <p className={cn(
+                        "text-sm font-extrabold tabular-nums",
+                        profit >= 0 ? "text-emerald-700" : "text-blue-600"
+                      )}>
+                        {profit >= 0 ? "+" : ""}{formatPrice(profit)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Số KM hiện tại</p>
+                      <p className="text-sm font-bold text-slate-800">{(v.current_km || 0).toLocaleString("vi-VN")} km</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Ngày đã cho thuê</p>
+                      <p className="text-sm font-bold text-slate-800">{v.totalRentalDays || 0} ngày</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Lấp đầy 30 ngày</p>
+                      <p className={cn(
+                        "text-sm font-extrabold tabular-nums",
+                        u30.pct >= 70 ? "text-emerald-600" : u30.pct >= 40 ? "text-amber-600" : "text-blue-500"
+                      )}>{u30.pct}%</p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-0.5">Tổng đơn thuê</p>
+                      <p className="text-sm font-bold text-slate-800">{totalRentalCount} đơn</p>
+                    </div>
+                  </div>
+
+                  {v.notes && v.notes.trim() && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-1">Ghi chú</p>
+                      <p className="text-sm text-slate-700 whitespace-pre-line">{v.notes}</p>
+                    </div>
+                  )}
+
+                  {recentOrders.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-slate-500 uppercase mb-2">Đơn thuê gần đây</p>
+                      <div className="space-y-1.5">
+                        {recentOrders.map((o) => (
+                          <div key={o.id} className="flex items-center justify-between text-sm bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 gap-2">
+                            <span className="font-bold text-slate-700 truncate">{o.customerName}</span>
+                            <span className="text-slate-400 shrink-0">{formatDisplayDate(o.startDate)}</span>
+                            <span className="font-bold tabular-nums text-blue-600 shrink-0">
+                              {(o.totalPrice || 0).toLocaleString("vi-VN")}đ
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-gray-400 bg-gray-50 p-3 rounded-xl">
-                    <ImageIcon className="w-4 h-4" />
-                    <span className="text-sm">Chưa có ảnh xe</span>
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
 
-              {/* Document Images */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-sm text-gray-500 mb-2">Ảnh giấy tờ xe</p>
-                {(viewingVehicle.documentImages?.length ?? 0) > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {viewingVehicle.documentImages.map((img, index) => (
-                      <div 
-                        key={index}
-                        className="aspect-square rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:opacity-90"
-                        onClick={() => setLightboxImage(img)}
-                      >
-                        <img src={img} alt={`Giấy tờ ${index + 1}`} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
+                  {(v.vehicleImages?.length > 0 || v.documentImages?.length > 0) && (
+                    <div className="space-y-3">
+                      {v.vehicleImages?.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-slate-500 uppercase mb-2">Ảnh xe</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {v.vehicleImages.map((img, index) => (
+                              <div
+                                key={index}
+                                className="aspect-square rounded-xl overflow-hidden border border-slate-200 cursor-pointer hover:opacity-90 transition-all"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setLightboxImage(img)
+                                }}
+                              >
+                                <img src={img} alt={`Xe ${index + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {v.documentImages?.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-slate-500 uppercase mb-2">Ảnh giấy tờ</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {v.documentImages.map((img, index) => (
+                              <div
+                                key={index}
+                                className="aspect-square rounded-xl overflow-hidden border border-slate-200 cursor-pointer hover:opacity-90 transition-all"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setLightboxImage(img)
+                                }}
+                              >
+                                <img src={img} alt={`Giấy tờ ${index + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-9 text-sm"
+                      onClick={() => setViewingVehicle(null)}
+                    >
+                      Đóng
+                    </Button>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-gray-400 bg-gray-50 p-3 rounded-xl">
-                    <ImageIcon className="w-4 h-4" />
-                    <span className="text-sm">Chưa có ảnh giấy tờ</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          <div className="flex justify-end pt-4 mt-4 border-t border-gray-100">
-            <Button variant="outline" onClick={() => setViewingVehicle(null)} className="rounded-xl border-gray-200">
-              Đóng
-            </Button>
-          </div>
+                </div>
+              </>
+            )
+          })()}
         </EntityFormDialogContent>
       </Dialog>
 
@@ -2112,19 +2428,19 @@ export default function OrdersPage() {
 
                 <PrintBusinessHeader
                   documentTitle="HỢP ĐỒNG CHO THUÊ XE MÁY & BIÊN NHẬN"
-                  metaLine={`Số HĐ: ${printingOrder.rentalCode || printingOrder.id} | Ngày lập: ${formatDisplayDate(printingOrder.createdAt || Date.now())}`}
+                  metaLine={`Số HĐ: ${printingOrder.rentalCode || printingOrder.id} | Ngày lập: ${formatDisplayDate(printingOrder.createdAt || printingOrder.created_at || new Date())}`}
                 />
 
                 {/* Main Content Info */}
                 <div className="grid grid-cols-2 gap-6 text-sm mb-6">
                   {/* Customer Info */}
                   <div className="border border-slate-200 rounded-xl p-4">
-                    <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-1 mb-2 uppercase text-xs">
+                    <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-1 mb-2 uppercase text-sm">
                       BÊN A: BÊN THUÊ XE (KHÁCH HÀNG)
                     </h3>
                     <div className="space-y-1.5">
                       <p><span className="text-slate-500">Họ và tên:</span> <span className="font-bold">{printingOrder.customerName}</span></p>
-                      <p><span className="text-slate-500">Số điện thoại:</span> <span className="font-semibold">{printingOrder.customerPhone || (cust as any)?.phone || 'N/A'}</span></p>
+                      <p><span className="text-slate-500">Số điện thoại:</span> <span className="font-semibold">{(cust as any)?.phone || 'N/A'}</span></p>
                       <p><span className="text-slate-500">CCCD/CMND:</span> {(cust as any)?.idcard || 'N/A'}</p>
                       <p><span className="text-slate-500">Địa chỉ:</span> {(cust as any)?.address || 'N/A'}</p>
                     </div>
@@ -2135,7 +2451,7 @@ export default function OrdersPage() {
 
                 {/* Vehicle Specifications */}
                 <div className="border border-slate-200 rounded-xl p-4 mb-6">
-                  <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-1 mb-3 uppercase text-xs">CHI TIẾT PHƯƠNG TIỆN CHO THUÊ</h3>
+                  <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-1 mb-3 uppercase text-sm">CHI TIẾT PHƯƠNG TIỆN CHO THUÊ</h3>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                     <p><span className="text-slate-500">Tên xe máy:</span> <span className="font-bold">{printingOrder.vehicleName}</span></p>
                     <p><span className="text-slate-500">Biển kiểm soát:</span> <span className="font-bold">{printingOrder.licensePlate}</span></p>
@@ -2145,8 +2461,8 @@ export default function OrdersPage() {
                 </div>
 
                 {/* Financial Details */}
-                <div className="border-2 border-slate-200 rounded-2xl p-5 bg-slate-50/50 mb-6">
-                  <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-1.5 mb-3 uppercase text-xs">THỜI GIAN & CHI TIẾT THANH TOÁN</h3>
+                <div className="border-2 border-slate-200 rounded-[var(--radius-container)] p-5 bg-slate-50/50 mb-6">
+                  <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-1.5 mb-3 uppercase text-sm">THỜI GIAN & CHI TIẾT THANH TOÁN</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between text-slate-700">
                       <span>Thời gian thuê xe:</span>
@@ -2171,15 +2487,15 @@ export default function OrdersPage() {
                       </div>
                     )}
                     <div className="flex justify-between border-t border-slate-200 pt-2 font-bold text-base text-slate-900">
-                      <span>Tổng chi phí dự kiến:</span>
-                      <span className="text-lg text-blue-600">{(printingOrder.totalPrice).toLocaleString('vi-VN')} đ</span>
+                      <span>{printingOrder.extraFees > 0 ? "Tổng chi phí thanh toán:" : "Tổng chi phí dự kiến:"}</span>
+                      <span className="text-lg text-blue-600">{(printingOrder.totalPrice + (printingOrder.extraFees || 0)).toLocaleString('vi-VN')} đ</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Terms and Conditions */}
-                <div className="border border-slate-200 rounded-xl p-4 mb-6 text-xs text-slate-600 leading-relaxed">
-                  <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-1 mb-2 uppercase text-xs">ĐIỀU KHOẢN THỎA THUẬN</h3>
+                <div className="border border-slate-200 rounded-xl p-4 mb-6 text-sm text-slate-600 leading-relaxed">
+                  <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-1 mb-2 uppercase text-sm">ĐIỀU KHOẢN THỎA THUẬN</h3>
                   <ol className="list-decimal pl-4 space-y-1.5">
                     <li>Bên thuê xe (Bên A) cam kết tự bảo quản xe máy thuê, không sử dụng xe vào mục đích vi phạm pháp luật Việt Nam.</li>
                     <li>Bên A phải tự chịu chi phí xăng dầu, vá lốp xe trong quá trình di chuyển thuê xe.</li>
@@ -2192,20 +2508,20 @@ export default function OrdersPage() {
                 <div className="grid grid-cols-2 text-center text-sm mt-8 mb-16">
                   <div>
                     <p className="font-bold uppercase text-slate-800">ĐẠI DIỆN BÊN A (KHÁCH THUÊ)</p>
-                    <p className="text-xs text-slate-400 italic mt-0.5">(Ký và ghi rõ họ tên)</p>
+                    <p className="text-sm text-slate-400 italic mt-0.5">(Ký và ghi rõ họ tên)</p>
                     <div className="h-16" />
                     <p className="font-bold text-slate-900">{printingOrder.customerName}</p>
                   </div>
                   <div>
                     <p className="font-bold uppercase text-slate-800">ĐẠI DIỆN BÊN B (CỬA HÀNG)</p>
-                    <p className="text-xs text-slate-400 italic mt-0.5">(Ký và đóng dấu)</p>
+                    <p className="text-sm text-slate-400 italic mt-0.5">(Ký và đóng dấu)</p>
                     <div className="h-16" />
                     <p className="font-bold text-slate-900">Trần Đức Quý</p>
                   </div>
                 </div>
 
                 {/* Footer Notes */}
-                <div className="text-center text-xs text-slate-400 border-t border-slate-100 pt-4 leading-relaxed">
+                <div className="text-center text-sm text-slate-400 border-t border-slate-100 pt-4 leading-relaxed">
                   Cảm ơn Quý khách đã tin tưởng và sử dụng dịch vụ cho thuê xe máy tại Hệ thống Xe máy Quy79.<br />
                   Biên nhận này làm căn cứ bàn giao tài sản và hoàn trả tiền đặt cọc cựu sau khi kiểm tra trả xe.
                 </div>
@@ -2225,11 +2541,11 @@ export default function OrdersPage() {
 
       {/* #4 Late fee dialog */}
       <Dialog open={isLateFeeOpen} onOpenChange={setIsLateFeeOpen}>
-        <EntityFormDialogContent accent="purple" maxWidth="sm">
+        <EntityFormDialogContent accent="blue" maxWidth="sm">
           <EntityFormHeader title="Phí phát sinh quá hạn" description="Đơn thuê quá hạn - nhập phí phát sinh thêm (nếu có) trước khi hoàn thành" />
           <div className="p-4 space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 font-medium">
-              ⚠️ Đơn thuê đã quá ngày kết thúc. Có phí phát sinh do quá hạn không?
+              ⚠ Đơn thuê đã quá ngày kết thúc. Có phí phát sinh do quá hạn không?
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Phí phát sinh thêm (VND)</label>
@@ -2243,7 +2559,7 @@ export default function OrdersPage() {
             </div>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setIsLateFeeOpen(false)}>Hủy</Button>
-              <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-xl" onClick={handleConfirmLateFee}>
+              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" onClick={handleConfirmLateFee}>
                 <CheckCircle className="w-4 h-4 mr-1.5" />
                 Hoàn thành đơn
               </Button>

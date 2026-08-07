@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   type ModuleAccent,
@@ -397,6 +398,26 @@ export function ModuleResponsiveTable({
   )
 }
 
+export function ModuleEmptyState({
+  title = "Chưa có dữ liệu",
+  description,
+  action,
+  className,
+}: {
+  title?: string
+  description?: string
+  action?: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn("flex flex-col items-center justify-center text-center py-12 px-4", className)}>
+      <p className="text-slate-600 font-bold">{title}</p>
+      {description && <p className="text-slate-500 text-xs mt-2 max-w-sm">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  )
+}
+
 export function ModuleMobileCard({
   children,
   className,
@@ -405,6 +426,110 @@ export function ModuleMobileCard({
   className?: string
 }) {
   return (
-    <div className={cn("module-table-row px-4 py-3 space-y-2", className)}>{children}</div>
+    <div className={cn("module-table-row px-4 py-3.5 space-y-2", className)}>{children}</div>
+  )
+}
+
+function buildPaginationPages(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  const pages: (number | "ellipsis")[] = [1]
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+  if (start > 2) pages.push("ellipsis")
+  for (let i = start; i <= end; i++) pages.push(i)
+  if (end < total - 1) pages.push("ellipsis")
+  pages.push(total)
+  return pages
+}
+
+export function ModulePagination({
+  page,
+  totalPages,
+  totalItems,
+  onPageChange,
+  itemLabel,
+  className,
+}: {
+  page: number
+  totalPages: number
+  totalItems?: number
+  onPageChange: (page: number) => void
+  itemLabel?: string
+  className?: string
+}) {
+  if (totalPages <= 1) return null
+
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const pages = buildPaginationPages(safePage, totalPages)
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-t border-slate-100 bg-white",
+        className
+      )}
+    >
+      <div className="text-xs text-slate-500 font-medium hidden sm:block">
+        Trang <span className="font-semibold text-slate-700">{safePage}</span>
+        {" / "}
+        <span className="font-semibold text-slate-700">{totalPages}</span>
+        {typeof totalItems === "number" && (
+          <>
+            {" "}
+            (Tổng {totalItems}
+            {itemLabel ? ` ${itemLabel}` : ""})
+          </>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 ml-auto sm:ml-0 flex-wrap justify-end">
+        <Button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, safePage - 1))}
+          disabled={safePage === 1}
+          variant="outline"
+          size="sm"
+          className="h-8 min-w-8 text-xs border-slate-200 rounded-xl px-3 font-semibold hover:bg-slate-50 text-slate-600"
+        >
+          Trước
+        </Button>
+        <div className="flex items-center gap-1">
+          {pages.map((p, idx) =>
+            p === "ellipsis" ? (
+              <span key={`e-${idx}`} className="text-slate-400 text-xs px-1 select-none">
+                …
+              </span>
+            ) : (
+              <Button
+                key={p}
+                type="button"
+                onClick={() => onPageChange(p)}
+                variant={safePage === p ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "h-8 w-8 text-xs rounded-xl font-semibold p-0",
+                  safePage === p
+                    ? "bg-purple-900 hover:bg-purple-950 text-white border-transparent"
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                )}
+              >
+                {p}
+              </Button>
+            )
+          )}
+        </div>
+        <Button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
+          disabled={safePage === totalPages}
+          variant="outline"
+          size="sm"
+          className="h-8 min-w-8 text-xs border-slate-200 rounded-xl px-3 font-semibold hover:bg-slate-50 text-slate-600"
+        >
+          Tiếp
+        </Button>
+      </div>
+    </div>
   )
 }
