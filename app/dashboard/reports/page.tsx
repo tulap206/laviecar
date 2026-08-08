@@ -157,8 +157,15 @@ export default function ReportsPage() {
   }, [])
 
   useEffect(() => {
+    setFleetPage(1)
     loadReportData(false)
   }, [filterPeriod, startDate, endDate])
+
+  useEffect(() => {
+    if (!reportData) return
+    const totalFleetPages = Math.max(1, Math.ceil(reportData.fleetPerformance.length / fleetItemsPerPage))
+    setFleetPage((page) => Math.min(page, totalFleetPages))
+  }, [reportData, fleetItemsPerPage])
 
   // Pagination calculations with search filter
   const filteredTransactions = transactions.filter((tx) => {
