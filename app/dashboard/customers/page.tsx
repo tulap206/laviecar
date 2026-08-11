@@ -890,15 +890,17 @@ export default function CustomersPage() {
                               >
                                 <Settings className="w-3.5 h-3.5" />
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 w-7 p-0 border-rose-200 rounded-lg hover:bg-rose-50 text-rose-500"
-                                onClick={() => handleDelete(customer.id)}
-                                title="Xóa"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
+                              {user?.permissions.canDelete && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 border-rose-200 rounded-lg hover:bg-rose-50 text-rose-500"
+                                  onClick={() => handleDelete(customer.id)}
+                                  title="Xóa"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
