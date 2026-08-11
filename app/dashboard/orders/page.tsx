@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useRentalData } from "@/contexts/rental-data-context"
 import { logger } from "@/lib/logger"
 import { formatMoneyInput, parseMoneyInput } from "@/lib/format-money"
-import { formatDisplayDate, formatDisplayDateTime, toDateInputValue, toStoredDateValue } from "@/lib/format-date"
+import { formatDisplayDate, formatDisplayDateTime, parseDisplayDate, toDateInputValue, toStoredDateValue } from "@/lib/format-date"
 import { supabase, fetchVehicles, fetchCustomers, fetchRentals, insertCustomer } from "@/lib/supabase"
 import { uploadImage } from "@/lib/storage"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -280,7 +280,9 @@ export default function OrdersPage() {
   const filteredVehiclesForSelect = vehicles.filter(v => 
     (v.name.toLowerCase().includes(vehicleSearch.toLowerCase()) || 
     (v.licensePlate && v.licensePlate.toLowerCase().includes(vehicleSearch.toLowerCase()))) &&
-    !formData.vehicleIds.includes(v.id)
+    !formData.vehicleIds.includes(v.id) &&
+    v.status !== "rented" &&
+    v.status !== "maintenance"
   )
 
   useEffect(() => {
@@ -399,6 +401,13 @@ export default function OrdersPage() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
+  const orderOverlapsDateRange = (order: RentalOrder, startDate: Date, endDate: Date) => {
+    const orderStart = parseDisplayDate(order.startDate)
+    const orderEnd = parseDisplayDate(order.endDate)
+    if (!orderStart || !orderEnd) return false
+    return !(endDate < orderStart || startDate > orderEnd)
+  }
+
   const generateRentalCodeFromUUID = (customerName: string, licensePlate: string, startDate: string, uuid: string) => {
     // Remove Vietnamese diacritics and get last name
     const removeVietnameseDiacritics = (str: string) => {
@@ -484,6 +493,27 @@ export default function OrdersPage() {
     
     if (startDate > endDate) {
       showWarning("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu!")
+      return
+    }
+
+    const unavailableVehicle = selectedVehicles.find((vehicle) => vehicle.status === "rented" || vehicle.status === "maintenance")
+    if (unavailableVehicle) {
+      showWarning(`Xe "${unavailableVehicle.name}" (${unavailableVehicle.licensePlate}) hiện không sẵn sàng để tạo đơn thuê mới.`)
+      return
+    }
+
+    const selectedVehicleIds = new Set(selectedVehicles.map((vehicle) => vehicle.id))
+    const conflictingRental = orders.find((order) => {
+      if (!selectedVehicleIds.has(order.vehicleId)) return false
+      if (order.status !== "pending" && order.status !== "active") return false
+      return orderOverlapsDateRange(order, startDate, endDate)
+    })
+
+    if (conflictingRental) {
+      showWarning(
+        `Xe "${conflictingRental.vehicleName}" (${conflictingRental.licensePlate}) đã có đơn thuê trong khoảng thời gian này!`,
+        `Khách: ${conflictingRental.customerName}\nNgày: ${formatDisplayDate(conflictingRental.startDate)} - ${formatDisplayDate(conflictingRental.endDate)}\nTrạng thái: ${conflictingRental.status}`
+      )
       return
     }
 
@@ -799,37 +829,38 @@ export default function OrdersPage() {
     const extra = parseMoneyInput(lateFeeExtra) || 0
     const order = orders.find(o => o.id === lateFeeOrderId)
     if (!order) return
-    // update extraFees first then complete
-    if (extra > 0) {
-      await supabase.from("rentals").update({ extraFees: (order.extraFees || 0) + extra }).eq("id", lateFeeOrderId)
-      setOrders(prev => prev.map(o => o.id === lateFeeOrderId ? { ...o, extraFees: (o.extraFees || 0) + extra } : o))
-    }
+    const extraFees = extra > 0 ? (order.extraFees || 0) + extra : order.extraFees || 0
     setIsLateFeeOpen(false)
-    await updateOrderStatus(lateFeeOrderId, "completed")
+    await updateOrderStatus(lateFeeOrderId, "completed", { extraFees })
   }
 
-  const updateOrderStatus = async (orderId: string, newStatus: RentalOrder["status"]) => {
+  const updateOrderStatus = async (
+    orderId: string,
+    newStatus: RentalOrder["status"],
+    overrides: Partial<Pick<RentalOrder, "extraFees">> = {}
+  ) => {
     const order = orders.find((o) => o.id === orderId)
     if (!order) return
 
     try {
+      const effectiveOrder = { ...order, ...overrides }
       // Tính doanh thu dựa trên trạng thái + chi phí phát sinh - hoa hồng home
       let revenue = 0
-      const extraFees = order.extraFees || 0
-      const commissionHome = order.commissionHome || 0
-      const commissionTotal = commissionHome * order.totalDays
+      const extraFees = effectiveOrder.extraFees || 0
+      const commissionHome = effectiveOrder.commissionHome || 0
+      const commissionTotal = commissionHome * effectiveOrder.totalDays
       
       if (newStatus === "cancelled") {
         // Hủy đơn: khách mất cọc + chi phí phát sinh -> doanh thu = tiền cọc + extraFees
-        revenue = order.deposit + extraFees
+        revenue = effectiveOrder.deposit + extraFees
       } else if (newStatus === "completed") {
         // Hoàn thành: trả cọc, thu tiền thuê + chi phí phát sinh - hoa hồng -> doanh thu = tiền thuê + extraFees - commissionTotal
-        revenue = order.totalPrice + extraFees - commissionTotal
+        revenue = effectiveOrder.totalPrice + extraFees - commissionTotal
       }
       // pending và active chưa có doanh thu
       
       // DB doesn't have received_at or completed_at columns, so we only update status and revenue
-      const updateData = { status: newStatus, revenue }
+      const updateData = { ...overrides, status: newStatus, revenue }
 
       // Update to Supabase
       const { error } = await supabase
@@ -843,7 +874,7 @@ export default function OrdersPage() {
         return
       }
 
-      setOrders(orders.map((o) => (o.id === orderId ? { ...o, ...updateData, status: newStatus, revenue } : o)))
+      setOrders(orders.map((o) => (o.id === orderId ? { ...o, ...updateData } : o)))
       const statusLabels: Record<string, string> = { pending: "Chờ giao xe", active: "Đang thuê", completed: "Hoàn thành", cancelled: "Đã hủy" }
       if (user) logger.log(user.username, user.displayName, 'Chỉnh sửa', 'Đơn thuê', `Cập nhật đơn ${orderId}: ${statusLabels[newStatus]}`)
     } catch (error) {
