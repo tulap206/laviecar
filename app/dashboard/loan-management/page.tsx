@@ -682,9 +682,7 @@ ${agreement.notes ? `<div class="section"><div class="section-title">GHI CHÚ</d
         interestpaymentcycle: parseInt(agreementForm.interestpaymentcycle) || 1,
         startdate: agreementForm.startdate,
         duedate: agreementForm.duedate,
-        nextpaymentdate: agreementForm.startdate,
         graceperioddays: parseInt(agreementForm.graceperioddays) || 0,
-        status: "active" as const,
         purpose: agreementForm.purpose,
         collateral: agreementForm.collateral,
         collateralvalue: parseMoneyInput(agreementForm.collateralvalue),
@@ -692,23 +690,18 @@ ${agreement.notes ? `<div class="section"><div class="section-title">GHI CHÚ</d
       }
 
       if (editingAgreement) {
-        const updated = await updateLoanAgreement(editingAgreement.id, loanData)
+        const updated = await updateLoanAgreement(editingAgreement.id, {
+          ...loanData,
+          nextpaymentdate: editingAgreement.nextpaymentdate || editingAgreement.startdate,
+          status: editingAgreement.status,
+        })
         setAgreements(agreements.map(a => a.id === updated.id ? updated : a))
         logger.log(user?.username || 'unknown', user?.displayName || 'Unknown', 'Chỉnh sửa', 'Cho vay', `Cập nhật đơn vay: ${loanData.loanamount.toLocaleString()}đ`)
-
-        await insertLoanLedger({
-          agreementid: updated.id,
-          loancode: updated.loancode,
-          type: 'CASH_OUT_LOAN',
-          amount: loanData.loanamount,
-          description: `Giải ngân cho ${borrower.name}`,
-          paymentmethod: 'cash',
-          user: user?.displayName || 'Unknown',
-          timestamp: new Date().toISOString(),
-        })
       } else {
         const newAgreement = await insertLoanAgreement({
           ...loanData,
+          nextpaymentdate: agreementForm.startdate,
+          status: "active" as const,
           loancode: `VY-${Date.now()}`,
         })
 
