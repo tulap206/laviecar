@@ -18,6 +18,17 @@ export const LAVIECAR_BUSINESS = {
     accountHolder: "Lê Phan Tự Lập",
     accountHolderLatin: "LE PHAN TU LAP",
   },
+  operators: "Laviecar",
+  representative: "Lê Phan Tự Lập",
+} as const
+
+export const SOFTWARE_ABOUT = {
+  productName: "Laviecar",
+  productLine: "Phần mềm quản lý vận hành cho thuê xe ô tô và dịch vụ tài chính",
+  author: "Phan Lê Tự Lập",
+  email: "phanletulap@gmail.com",
+  phone: "0967611112",
+  phoneDisplay: "0967 611 112",
 } as const
 
 export function formatLaviecarBankLine(): string {

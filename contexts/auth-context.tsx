@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 import { logger } from "@/lib/logger"
+import { toast } from "sonner"
+import { LOCAL_USER_KEY, LOCAL_LOGS_KEY, LEGACY_USER_KEY, LEGACY_LOGS_KEY } from "@/lib/auth-session"
 
 export type UserRole = "admin" | "staff"
 
@@ -10,9 +12,12 @@ export interface User {
   username: string
   displayName: string
   role: UserRole
+  avatarUrl?: string
   permissions: {
     canDelete: boolean
+    canBackup?: boolean
     canViewAccessHistory?: boolean
+    canManageUsers?: boolean
   }
 }
 
@@ -33,71 +38,36 @@ interface AuthContextType {
   isLoading: boolean
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => void
+  updateUser: (partial: Partial<User>) => void
   addAccessLog: (action: string, module: string, details: string) => void
   accessLogs: AccessLog[]
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Predefined users
-export const USERS: { username: string; password: string; user: User }[] = [
-  {
-    username: "admin",
-    password: "admin",
-    user: {
-      id: "1",
-      username: "admin",
-      displayName: "Admin",
-      role: "admin",
-      permissions: {
-        canDelete: true,
-      },
-    },
-  },
-  {
-    username: "loca",
-    password: "admin",
-    user: {
-      id: "2",
-      username: "loca",
-      displayName: "Lộc A",
-      role: "staff",
-      permissions: {
-        canDelete: false,
-      },
-    },
-  },
-  {
-    username: "locb",
-    password: "admin",
-    user: {
-      id: "3",
-      username: "locb",
-      displayName: "Lộc B",
-      role: "staff",
-      permissions: {
-        canDelete: false,
-      },
-    },
-  },
-  {
-    username: "mod",
-    password: "Mod@123",
-    user: {
-      id: "4",
-      username: "mod",
-      displayName: "Mod",
-      role: "staff", // Staff/Mod role that restricts deletion and access-history/settings
-      permissions: {
-        canDelete: false,
-      },
-    },
-  },
-]
+const getClientIP = async () => {
+  try {
+    const res = await fetch("/api/client-ip", { cache: "no-store" })
+    if (!res.ok) return "Unknown"
+    const data = await res.json()
+    return typeof data?.ip === "string" && data.ip ? data.ip : "Unknown"
+  } catch {
+    return "Unknown"
+  }
+}
 
-// Get client IP (simplified for demo)
-const getClientIP = () => {
-  return "192.168.1." + Math.floor(Math.random() * 255)
+function readLocal(key: string, legacyKey: string) {
+  return localStorage.getItem(key) || localStorage.getItem(legacyKey)
+}
+
+function writeLocal(key: string, legacyKey: string, value: string) {
+  localStorage.setItem(key, value)
+  localStorage.removeItem(legacyKey)
+}
+
+function clearLocal(key: string, legacyKey: string) {
+  localStorage.removeItem(key)
+  localStorage.removeItem(legacyKey)
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -106,33 +76,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([])
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.alert = (message: string) => {
+        if (!message) return
+        const cleanMessage = message.replace(/^[⚠️❌✓ℹ️🔔]\s*/g, "")
+        const lines = cleanMessage.split("\n")
+        const title = lines[0]
+        const description = lines.slice(1).filter((l) => l.trim() !== "").join("\n")
+        const isWarning =
+          message.includes("⚠️") ||
+          message.toLowerCase().includes("cảnh báo") ||
+          message.toLowerCase().includes("vui lòng")
+        const isError =
+          message.includes("❌") ||
+          message.toLowerCase().includes("lỗi") ||
+          message.toLowerCase().includes("thất bại")
+        const isSuccess =
+          message.includes("✓") ||
+          message.toLowerCase().includes("thành công") ||
+          message.toLowerCase().includes("hoàn thành")
+        const options = { description: description || undefined, duration: isError ? 6000 : 4000 }
+        if (isError) toast.error(title, options)
+        else if (isWarning) toast.warning(title, options)
+        else if (isSuccess) toast.success(title, options)
+        else toast.info(title, options)
+      }
+    }
+
     const init = async () => {
       try {
-        // Check for saved session
-        const savedUser = localStorage.getItem("3l_moto_user")
-        const savedLogs = localStorage.getItem("3l_moto_access_logs")
-        
-        if (savedUser) {
-          try {
-            setUser(JSON.parse(savedUser))
-          } catch {
-            localStorage.removeItem("3l_moto_user")
+        const res = await fetch("/api/auth/me")
+        if (res.ok) {
+          const data = await res.json()
+          if (data.authenticated) {
+            setUser(data.user)
+            writeLocal(LOCAL_USER_KEY, LEGACY_USER_KEY, JSON.stringify(data.user))
+          } else {
+            setUser(null)
+            clearLocal(LOCAL_USER_KEY, LEGACY_USER_KEY)
           }
+        } else {
+          setUser(null)
+          clearLocal(LOCAL_USER_KEY, LEGACY_USER_KEY)
         }
-        
+
+        const savedLogs = readLocal(LOCAL_LOGS_KEY, LEGACY_LOGS_KEY)
         if (savedLogs) {
           try {
             const parsedLogs = JSON.parse(savedLogs)
-            setAccessLogs(parsedLogs.map((log: AccessLog) => ({
-              ...log,
-              timestamp: new Date(log.timestamp)
-            })))
+            setAccessLogs(
+              parsedLogs.map((log: AccessLog) => ({
+                ...log,
+                timestamp: new Date(log.timestamp),
+              }))
+            )
           } catch {
-            localStorage.removeItem("3l_moto_access_logs")
+            clearLocal(LOCAL_LOGS_KEY, LEGACY_LOGS_KEY)
           }
         }
       } catch (error) {
-        console.error("❌ Error in init:", error)
+        console.error("Error in auth init:", error)
+        setUser(null)
+        clearLocal(LOCAL_USER_KEY, LEGACY_USER_KEY)
       } finally {
         setIsLoading(false)
       }
@@ -143,32 +148,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addAccessLog = async (action: string, module: string, details: string) => {
     if (!user) return
-    
+    const ipAddress = await getClientIP()
     const newLog = {
       username: user.username,
-      displayName: user.displayName,
+      displayname: user.displayName,
       action,
       module,
       details,
+      ip_address: ipAddress,
       timestamp: new Date().toISOString(),
     }
-    
+
     try {
-      // Save to Supabase
-      const { error } = await (await import("@/lib/supabase")).supabase
-        .from("access_logs")
-        .insert([newLog])
-      
-      if (error) {
-        console.error("❌ Error logging to Supabase:", error)
-      } else {
-        console.log("✅ Logged to Supabase:", newLog)
-      }
+      const { error } = await (await import("@/lib/supabase")).supabase.from("access_logs").insert([newLog])
+      if (error) console.error("Error logging to Supabase:", error)
     } catch (error) {
       console.error("Exception logging:", error)
     }
-    
-    // Also update local state
+
     const localLog: AccessLog = {
       id: Date.now().toString(),
       userId: user.id,
@@ -177,85 +174,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       action,
       module,
       details,
-      ipAddress: getClientIP(),
+      ipAddress,
       timestamp: new Date(),
     }
-    
-    setAccessLogs(prev => {
+
+    setAccessLogs((prev) => {
       const updated = [localLog, ...prev]
-      localStorage.setItem("3l_moto_access_logs", JSON.stringify(updated))
+      writeLocal(LOCAL_LOGS_KEY, LEGACY_LOGS_KEY, JSON.stringify(updated))
       return updated
     })
   }
 
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Try Supabase first
-      const { supabase } = await import("@/lib/supabase")
-      const { data, error } = await supabase
-        .from("auth_users")
-        .select("*")
-        .eq("username", username)
-        .eq("password", password)
-        .single()
-
-      if (data) {
-        const userData: User = {
-          id: data.id,
-          username: data.username,
-          displayName: data.displayname,
-          role: data.role as UserRole,
-          permissions: {
-            canDelete: data.can_delete || false,
-          },
-        }
-        setUser(userData)
-        localStorage.setItem("3l_moto_user", JSON.stringify(userData))
-        logger.login(userData.username, userData.displayName)
-        console.log("✅ Logged in from Supabase")
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setUser(data.user)
+        writeLocal(LOCAL_USER_KEY, LEGACY_USER_KEY, JSON.stringify(data.user))
         return { success: true }
       }
-
-      // Fallback to hardcoded users if not found in Supabase
-      console.log("⚠️ User not found in Supabase, trying hardcoded users...")
-      const foundUser = USERS.find(u => u.username === username && u.password === password)
-      
-      if (foundUser) {
-        setUser(foundUser.user)
-        localStorage.setItem("3l_moto_user", JSON.stringify(foundUser.user))
-        logger.login(foundUser.user.username, foundUser.user.displayName)
-        console.log("✅ Logged in from hardcoded users")
-        return { success: true }
-      }
-
-      return { success: false, error: "Tên đăng nhập hoặc mật khẩu không đúng" }
+      return { success: false, error: data.error || "Đăng nhập thất bại" }
     } catch (error) {
       console.error("Login error:", error)
-      // Fallback to hardcoded users on error
-      const foundUser = USERS.find(u => u.username === username && u.password === password)
-      if (foundUser) {
-        setUser(foundUser.user)
-        localStorage.setItem("3l_moto_user", JSON.stringify(foundUser.user))
-        logger.login(foundUser.user.username, foundUser.user.displayName)
-        return { success: true }
-      }
-      return { success: false, error: "Lỗi đăng nhập" }
+      return { success: false, error: "Lỗi kết nối máy chủ" }
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
     if (user) {
-      // Log to Supabase
-      logger.logout(user.username, user.displayName)
+      try {
+        await logger.logout(user.username, user.displayName)
+        await fetch("/api/auth/logout", { method: "POST" })
+      } catch (err) {
+        console.error("Logout API error:", err)
+      }
     }
     setUser(null)
-    localStorage.removeItem("3l_moto_user")
+    clearLocal(LOCAL_USER_KEY, LEGACY_USER_KEY)
+  }
+
+  const updateUser = (partial: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev
+      const next = { ...prev, ...partial }
+      writeLocal(LOCAL_USER_KEY, LEGACY_USER_KEY, JSON.stringify(next))
+      return next
+    })
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, addAccessLog, accessLogs }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, updateUser, addAccessLog, accessLogs }}>
       {children}
     </AuthContext.Provider>
   )

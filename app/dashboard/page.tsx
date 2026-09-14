@@ -30,6 +30,10 @@ import {
   ArrowUpRight,
   ClipboardList,
   Search,
+  Bell,
+  FileText,
+  Lock,
+  Unlock,
 } from "lucide-react"
 import { SkeletonMetricCards, SkeletonTable } from "@/components/ui/skeleton-loader"
 import { MonthlyRevenueChart, RentalStatusChart, RentalFleetChart, RentalIncomeExpenseChart } from "@/components/dashboard/rental-charts"
@@ -64,6 +68,10 @@ import { calcOperatingProfit, calcOperatingRevenue, isCapitalTransaction, sumTxA
 import { buildCommissionHomeReport, sumCommissionRows } from "@/lib/commission-home"
 import { useAuth } from "@/contexts/auth-context"
 import { logger } from "@/lib/logger"
+import { fetchBookingLockStatus, setBookingLockStatus } from "@/lib/booking-lock"
+import { DailySummaryDialog } from "@/components/dashboard/daily-summary-dialog"
+import { DailyNotificationModal } from "@/components/dashboard/daily-notification-modal"
+import { TodayHandoverSchedule } from "@/components/dashboard/today-handover-schedule"
 
 interface DashboardStats {
   totalVehicles: number
@@ -100,6 +108,12 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<any[]>([])
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isDailySummaryOpen, setIsDailySummaryOpen] = useState(false)
+  const [isDailyNotificationOpen, setIsDailyNotificationOpen] = useState(false)
+  const [hasCheckedDailyNotification, setHasCheckedDailyNotification] = useState(false)
+  const [isBookingLocked, setIsBookingLocked] = useState(false)
+  const [isLockModalOpen, setIsLockModalOpen] = useState(false)
+  const [lockReason, setLockReason] = useState("")
   const [formData, setFormData] = useState({
     customerId: "",
     vehicleId: "",
@@ -447,6 +461,27 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
+    fetchBookingLockStatus().then((s) => setIsBookingLocked(s.isLocked)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (orders.length === 0 || hasCheckedDailyNotification) return
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const due = orders.some((o: any) => {
+      if (o.status === "cancelled" || o.status === "completed") return false
+      if (!o.endDate) return false
+      const parts = String(o.endDate).split("/")
+      if (parts.length !== 3) return false
+      const end = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]))
+      end.setHours(0, 0, 0, 0)
+      return end.getTime() === today.getTime() || end.getTime() < today.getTime()
+    })
+    if (due) setIsDailyNotificationOpen(true)
+    setHasCheckedDailyNotification(true)
+  }, [orders, hasCheckedDailyNotification])
+
+  useEffect(() => {
     loadDashboardData(true)
 
     // Subscribe to real-time events for rentals, vehicles, transactions
@@ -769,17 +804,56 @@ export default function DashboardPage() {
           </div>
         }
         actions={
-          <Button
-            onClick={() => setIsDialogOpen(true)}
-            className="bg-purple-900 hover:bg-purple-950 text-white rounded-xl text-sm font-semibold shadow-sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Tạo đơn thuê mới
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDailySummaryOpen(true)}
+              className="rounded-xl border-purple-200 text-purple-800"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Tóm tắt ngày
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDailyNotificationOpen(true)}
+              className="rounded-xl border-purple-200 text-purple-800"
+            >
+              <Bell className="w-4 h-4 mr-2" />
+              Nhắc việc
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsLockModalOpen(true)}
+              className={cn(
+                "rounded-xl",
+                isBookingLocked ? "border-rose-300 text-rose-700 bg-rose-50" : "border-slate-200"
+              )}
+              title={isBookingLocked ? "Đang khóa đặt xe web" : "Khóa đặt xe web"}
+            >
+              {isBookingLocked ? <Lock className="w-4 h-4 mr-2" /> : <Unlock className="w-4 h-4 mr-2" />}
+              {isBookingLocked ? "Đang khóa web" : "Khóa web"}
+            </Button>
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              className="bg-purple-900 hover:bg-purple-950 text-white rounded-xl text-sm font-semibold shadow-sm"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Tạo đơn thuê mới
+            </Button>
+          </div>
         }
       />
 
       <div className="space-y-6">
+        <TodayHandoverSchedule
+          orders={orders}
+          vehicles={vehicles}
+          customers={customers}
+          onSelectOrder={(order) => router.push(`/dashboard/orders`)}
+        />
         {/* Nhóm chỉ số vận hành */}
         <div className="space-y-3">
           <ModuleSectionTitle title="Vận hành đội xe" />
@@ -1618,6 +1692,59 @@ export default function DashboardPage() {
           </form>
         </EntityFormDialogContent>
     </Dialog>
+      <DailySummaryDialog
+        isOpen={isDailySummaryOpen}
+        onClose={() => setIsDailySummaryOpen(false)}
+        orders={orders}
+        vehicles={vehicles}
+        customers={customers}
+        transactions={transactions}
+      />
+      <DailyNotificationModal
+        isOpen={isDailyNotificationOpen}
+        onClose={() => setIsDailyNotificationOpen(false)}
+        orders={orders}
+        vehicles={vehicles}
+        customers={customers}
+      />
+      <Dialog open={isLockModalOpen} onOpenChange={setIsLockModalOpen}>
+        <DialogContent className="bg-white rounded-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isBookingLocked ? "Mở khóa đặt xe website?" : "Khóa đặt xe website"}</DialogTitle>
+            <DialogDescription>
+              {isBookingLocked
+                ? "Khách trên trang chủ sẽ đặt xe được trở lại."
+                : "Tạm dừng nhận đơn từ form đặt xe trên trang chủ. Dữ liệu hiện tại không bị xóa."}
+            </DialogDescription>
+          </DialogHeader>
+          {!isBookingLocked && (
+            <Input
+              placeholder="Lý do (hiển thị cho khách)"
+              value={lockReason}
+              onChange={(e) => setLockReason(e.target.value)}
+            />
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsLockModalOpen(false)}>Hủy</Button>
+            <Button
+              className={isBookingLocked ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"}
+              onClick={async () => {
+                try {
+                  const next = !isBookingLocked
+                  await setBookingLockStatus(next, lockReason, user?.username)
+                  setIsBookingLocked(next)
+                  setIsLockModalOpen(false)
+                  setLockReason("")
+                } catch (e: any) {
+                  alert(e?.message || "Không đổi được trạng thái khóa đặt xe")
+                }
+              }}
+            >
+              {isBookingLocked ? "Mở khóa" : "Xác nhận khóa"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
   </ModulePageShell>
   )
 }

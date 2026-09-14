@@ -8,6 +8,7 @@ import {
   insertCustomer,
   insertRental,
 } from "@/lib/supabase"
+import { fetchBookingLockStatus } from "@/lib/booking-lock"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -157,6 +158,11 @@ export default function LandingPageClient() {
 
     setIsLoading(true)
     try {
+      const lock = await fetchBookingLockStatus()
+      if (lock.isLocked) {
+        setFormError(lock.reason || "Hiện không nhận đặt xe trực tuyến. Vui lòng gọi hotline.")
+        return
+      }
       const [vehicles, rentals] = await Promise.all([fetchVehicles(), fetchRentals()])
 
       const conflictingVehicleIds = new Set(

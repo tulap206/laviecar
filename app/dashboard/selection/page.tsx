@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Shield, Car, LogOut, Receipt } from "lucide-react"
+import { Shield, Car, LogOut, Receipt, Landmark } from "lucide-react"
 import Image from "next/image"
 
 export default function SelectionPage() {
@@ -63,7 +63,7 @@ export default function SelectionPage() {
         </div>
 
         {/* ── Selection Cards ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mt-4">
           {/* Left card: Rental System */}
           <Card
             onClick={() => router.push("/dashboard")}
@@ -103,6 +103,26 @@ export default function SelectionPage() {
                 </p>
               </div>
               <span className="inline-flex items-center text-xs font-bold text-amber-500 group-hover:translate-x-1 transition-transform mt-2">
+                Truy cập hệ thống &rarr;
+              </span>
+            </CardContent>
+          </Card>
+
+          <Card
+            onClick={() => router.push("/dashboard/pawnshop")}
+            className="cursor-pointer group relative overflow-hidden bg-white/95 hover:bg-white border border-white/20 hover:border-emerald-500/40 rounded-3xl shadow-xl hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 transform hover:-translate-y-1"
+          >
+            <CardContent className="p-8 flex flex-col items-center text-center gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-600 transition-colors duration-300">
+                <Landmark className="w-8 h-8 text-emerald-600 group-hover:text-white transition-colors duration-300" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 font-serif">Quản trị Cầm đồ</h3>
+                <p className="text-slate-500 text-sm mt-2">
+                  Quản lý tài sản niêm phong, hợp đồng cầm, lãi định kỳ, kho và thanh lý.
+                </p>
+              </div>
+              <span className="inline-flex items-center text-xs font-bold text-emerald-600 group-hover:translate-x-1 transition-transform mt-2">
                 Truy cập hệ thống &rarr;
               </span>
             </CardContent>
