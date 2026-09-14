@@ -6,7 +6,9 @@ import { supabase } from "@/lib/supabase"
 import { logger } from "@/lib/logger"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download, Upload, AlertCircle, CheckCircle, Trash2, RefreshCw } from "lucide-react"
+import { Download, Upload, AlertCircle, CheckCircle, Trash2, RefreshCw, Info, Users } from "lucide-react"
+import { UserAccountsModal } from "@/components/dashboard/user-accounts-modal"
+import { AboutSoftwareDialog } from "@/components/dashboard/about-software-dialog"
 
 interface BackupData {
   timestamp: string
@@ -28,6 +30,8 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [backupFiles, setBackupFiles] = useState<BackupFile[]>([])
   const [filesLoading, setFilesLoading] = useState(true)
+  const [isAccountsModalOpen, setIsAccountsModalOpen] = useState(false)
+  const [isAboutOpen, setIsAboutOpen] = useState(false)
 
   // Load backup files on mount
   useEffect(() => {
@@ -340,10 +344,34 @@ export default function SettingsPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 w-full">
-      <div>
-        <h1 className="text-lg md:text-2xl font-bold text-gray-900">Cài đặt</h1>
-        <p className="text-xs md:text-sm text-gray-600">Quản lý sao lưu và khôi phục dữ liệu</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-lg md:text-2xl font-bold text-gray-900">Cài đặt</h1>
+          <p className="text-xs md:text-sm text-gray-600">Quản lý sao lưu, tài khoản và giới thiệu phần mềm</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {user?.role === "admin" && (
+            <Button
+              onClick={() => setIsAccountsModalOpen(true)}
+              className="bg-purple-900 hover:bg-purple-950 text-white rounded-xl gap-2"
+            >
+              <Users className="w-4 h-4" />
+              Tài khoản
+            </Button>
+          )}
+          <Button
+            type="button"
+            onClick={() => setIsAboutOpen(true)}
+            variant="outline"
+            className="rounded-xl gap-2 border-purple-200 text-purple-800"
+          >
+            <Info className="w-4 h-4" />
+            Giới thiệu
+          </Button>
+        </div>
       </div>
+      <UserAccountsModal open={isAccountsModalOpen} onOpenChange={setIsAccountsModalOpen} />
+      <AboutSoftwareDialog open={isAboutOpen} onOpenChange={setIsAboutOpen} />
 
       {/* Backup & Restore Card */}
       <Card>

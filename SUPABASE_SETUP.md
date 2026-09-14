@@ -1,4 +1,4 @@
-# 🏍️ 3L Moto - Supabase Integration Guide
+# Laviecar - Supabase Integration Guide
 
 ## ✅ Hoàn thành: Tích hợp Supabase
 
@@ -10,7 +10,7 @@ Tôi đã cập nhật project của bạn để **lưu dữ liệu vào Supabas
 
 ### 1. ✅ File `.env.local` đã được tạo
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://fpiupgmknsydqrihqdbo.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 

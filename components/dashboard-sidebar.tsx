@@ -5,7 +5,6 @@ import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
-import { USERS } from "@/contexts/auth-context"
 import {
   Car,
   ClipboardList,
@@ -90,14 +89,16 @@ export function DashboardSidebar({ children }: SidebarProps) {
         return
       }
 
-      const foundUser = USERS.find(u => u.username === user?.username && u.password === oldPassword)
-      if (!foundUser) {
-        setPasswordMessage({ type: 'error', text: '❌ Mật khẩu cũ không đúng' })
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setPasswordMessage({ type: "error", text: data.error || "❌ Đổi mật khẩu thất bại" })
         return
       }
-
-      // Local-only: update in USERS array (session only)
-      foundUser.password = newPassword
       setPasswordMessage({ type: 'success', text: '✅ Đổi mật khẩu thành công' })
       setOldPassword("")
       setNewPassword("")
@@ -315,7 +316,7 @@ export function DashboardSidebar({ children }: SidebarProps) {
               <Button
                 onClick={handleChangePassword}
                 disabled={changingPassword}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+                className="w-full bg-purple-900 hover:bg-purple-950 text-white rounded-lg"
               >
                 {changingPassword ? "Đang xử lý..." : "Đổi mật khẩu"}
               </Button>

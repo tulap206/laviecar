@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { showError, showWarning } from "@/lib/toast-utils"
+import { showError, showWarning, showSuccess } from "@/lib/toast-utils"
 import { createPortal } from "react-dom"
 import { useAuth } from "@/contexts/auth-context"
 import { useRentalData } from "@/contexts/rental-data-context"
@@ -66,6 +66,16 @@ import {
   stripRentalTermFromNotes,
   buildRentalTermPayload,
 } from "@/lib/rental-term"
+import { FleetTimelineView } from "@/components/dashboard/fleet-timeline-view"
+import { TodayHandoverSchedule } from "@/components/dashboard/today-handover-schedule"
+import { QuickAssignVehiclePopover } from "@/components/dashboard/quick-assign-vehicle-popover"
+import { DailyNotificationModal } from "@/components/dashboard/daily-notification-modal"
+import type { Vehicle as FleetVehicle } from "@/lib/supabase"
+
+const UNASSIGNED_VEHICLE_ID = "00000000-0000-0000-0000-000000000000"
+function isUnassignedVehicle(order: { vehicleId?: string; licensePlate?: string }) {
+  return order.licensePlate === "CHỜ GÁN XE" || !order.vehicleId || order.vehicleId === UNASSIGNED_VEHICLE_ID
+}
 
 interface RentalOrder {
   id: string
@@ -894,6 +904,40 @@ export default function OrdersPage() {
     }
   }
 
+  const handleQuickAssignVehicle = async (order: RentalOrder, selectedVehicle: FleetVehicle) => {
+    try {
+      const totalPrice = order.totalDays * selectedVehicle.pricePerDay
+      const { error } = await supabase
+        .from("rentals")
+        .update({
+          vehicleId: selectedVehicle.id,
+          vehicleName: selectedVehicle.name,
+          licensePlate: selectedVehicle.licensePlate,
+          pricePerDay: selectedVehicle.pricePerDay,
+          totalPrice,
+        })
+        .eq("id", order.id)
+      if (error) throw error
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id
+            ? {
+                ...o,
+                vehicleId: selectedVehicle.id,
+                vehicleName: selectedVehicle.name,
+                licensePlate: selectedVehicle.licensePlate,
+                pricePerDay: selectedVehicle.pricePerDay,
+                totalPrice,
+              }
+            : o
+        )
+      )
+      showSuccess(`Đã gán xe ${selectedVehicle.name} (${selectedVehicle.licensePlate}) cho khách ${order.customerName}`)
+    } catch (err: any) {
+      showError(`Lỗi khi gán xe: ${err.message || err}`)
+    }
+  }
+
   if (loading) {
     return (
       <ModulePageShell module="rental">
@@ -1009,8 +1053,30 @@ export default function OrdersPage() {
         }
       />
 
+      <TodayHandoverSchedule
+        orders={orders as any}
+        vehicles={vehicles as any}
+        customers={customers as any}
+        onDeliverOrder={(order) => updateOrderStatus(order.id, "active")}
+        onCompleteOrder={(order) => openCompleteWithLateFee(order.id)}
+        onSelectOrder={(order) => setViewingOrder(order as any)}
+      />
+      <FleetTimelineView
+        vehicles={vehicles as any}
+        rentals={orders as any}
+        onSelectOrder={(rental) => {
+          const found = orders.find((o) => o.id === rental.id)
+          if (found) setViewingOrder(found)
+        }}
+        onQuickBookVehicle={(vehicle, date) => {
+          const d = date.toISOString().slice(0, 10)
+          setFormData((prev) => ({ ...prev, vehicleIds: [vehicle.id], startDate: d, endDate: d }))
+          setIsDialogOpen(true)
+        }}
+      />
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <EntityFormDialogContent accent="blue">
+          <EntityFormDialogContent accent="purple">
             <EntityFormHeader
               title="Tạo đơn thuê mới"
               description="Nhập thông tin đơn thuê xe"
@@ -1493,6 +1559,14 @@ export default function OrdersPage() {
                             <td className="py-3.5 px-4">
                               <div className="flex items-center justify-end gap-1 flex-nowrap">
                                 {/* #5 Quick action */}
+                                {order.status === "pending" && isUnassignedVehicle(order) && (
+                                  <QuickAssignVehiclePopover
+                                    order={order as any}
+                                    vehicles={vehicles as any}
+                                    orders={orders}
+                                    onAssign={handleQuickAssignVehicle}
+                                  />
+                                )}
                                 {order.status === "pending" && (
                                   <Button variant="ghost" size="sm" className="h-7 px-2 text-sm text-emerald-700 hover:text-emerald-800 rounded-lg hover:bg-emerald-50 gap-1" onClick={() => updateOrderStatus(order.id, "active")} title="Giao xe">
                                     <Play className="w-3 h-3" />Giao
@@ -2521,13 +2595,13 @@ export default function OrdersPage() {
                     <p className="font-bold uppercase text-slate-800">ĐẠI DIỆN BÊN B (CỬA HÀNG)</p>
                     <p className="text-sm text-slate-400 italic mt-0.5">(Ký và đóng dấu)</p>
                     <div className="h-16" />
-                    <p className="font-bold text-slate-900">Trần Đức Quý</p>
+                    <p className="font-bold text-slate-900">{LAVIECAR_BUSINESS.representative}</p>
                   </div>
                 </div>
 
                 {/* Footer Notes */}
                 <div className="text-center text-sm text-slate-400 border-t border-slate-100 pt-4 leading-relaxed">
-                  Cảm ơn Quý khách đã tin tưởng và sử dụng dịch vụ cho thuê xe máy tại Hệ thống Xe máy Quy79.<br />
+                  Cảm ơn Quý khách đã tin tưởng và sử dụng dịch vụ cho thuê xe ô tô tại Laviecar.<br />
                   Biên nhận này làm căn cứ bàn giao tài sản và hoàn trả tiền đặt cọc cựu sau khi kiểm tra trả xe.
                 </div>
               </div>

@@ -19,7 +19,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
-import { TrendingUp, Bike, Users, ClipboardList, DollarSign, Wallet, Plus, Trash2, Edit2, Search, X } from "lucide-react"
+import { TrendingUp, Car, Users, ClipboardList, DollarSign, Wallet, Plus, Trash2, Edit2, Search, X, Printer } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { rentalTableHeadClass, RentalKpiCard } from "@/components/dashboard/rental-ui"
 import { formatDisplayDate } from "@/lib/format-date"
@@ -37,6 +37,7 @@ import {
   Cell,
   Legend,
 } from "recharts"
+import { FinancialReportA4Dialog } from "@/components/dashboard/financial-report-a4-dialog"
 
 interface ReportData {
   totalCustomers: number
@@ -99,6 +100,7 @@ export default function ReportsPage() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
+  const [isA4Open, setIsA4Open] = useState(false)
   const [formData, setFormData] = useState({
     type: "income" as "income" | "expense",
     description: "",
@@ -690,8 +692,8 @@ export default function ReportsPage() {
       title: "Tổng Xe",
       value: reportData.totalVehicles.toString(),
       change: `${reportData.activeRentals} đang thuê`,
-      icon: <Bike className="w-4 h-4" />,
-      watermark: <Bike className="w-20 h-20" />,
+      icon: <Car className="w-4 h-4" />,
+      watermark: <Car className="w-20 h-20" />,
       accent: "purple" as const,
     },
     {
@@ -713,6 +715,7 @@ export default function ReportsPage() {
   ]
 
   return (
+    <>
     <ModulePageShell module="rental">
       <ModuleSubpageHeader
         module="rental"
@@ -724,6 +727,14 @@ export default function ReportsPage() {
         ]}
         actions={
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              type="button"
+              onClick={() => setIsA4Open(true)}
+              className="bg-purple-900 hover:bg-purple-950 text-white rounded-xl gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              Báo cáo A4
+            </Button>
             <Select value={filterPeriod} onValueChange={(val) => setFilterPeriod(val as any)}>
               <SelectTrigger className="w-[170px] bg-white border-slate-300 rounded-lg">
                 <SelectValue placeholder="Chọn kỳ báo cáo" />
@@ -1020,7 +1031,7 @@ export default function ReportsPage() {
       <Card>
         <CardHeader className="pb-2 md:pb-4 p-3 md:p-4">
           <CardTitle className="text-base md:text-lg flex items-center gap-2 text-indigo-900">
-            <Bike className="w-5 h-5 text-indigo-600" />
+            <Car className="w-5 h-5 text-indigo-600" />
             Hiệu Suất Vận Hành Đội Xe
           </CardTitle>
           <CardDescription className="text-xs text-slate-500">
@@ -1032,7 +1043,7 @@ export default function ReportsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
-                  <th className="p-3">Xe máy</th>
+                  <th className="p-3">Xe ô tô</th>
                   <th className="p-3">Biển số</th>
                   <th className="p-3 text-center">Số ngày chạy</th>
                   <th className="p-3 text-right">Doanh thu thuê</th>
@@ -1539,5 +1550,19 @@ export default function ReportsPage() {
         )
       })()}
     </ModulePageShell>
+      {reportData && (
+        <FinancialReportA4Dialog
+          open={isA4Open}
+          onOpenChange={setIsA4Open}
+          reportData={{
+            ...reportData,
+            commissionHomeTotalAll: reportData.commissionHomeTotal,
+            commissionByHomeAll: reportData.commissionByHome,
+          }}
+          transactions={transactions}
+          periodLabel={filterPeriod}
+        />
+      )}
+    </>
   )
 }
