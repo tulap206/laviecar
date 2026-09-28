@@ -2,7 +2,12 @@ import type { Metadata } from "next"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/contexts/auth-context"
+import MaintenanceScreen from "@/components/maintenance-screen"
 import "./globals.css"
+
+// Cấu hình trạng thái tạm khóa / ngưng hoạt động cho toàn bộ hệ thống (Landing page & Admin page)
+// Đặt thành false nếu muốn mở lại hoạt động bình thường
+const IS_MAINTENANCE = true
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin", "vietnamese"],
@@ -12,8 +17,8 @@ const plusJakarta = Plus_Jakarta_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "Lavie Car Rental - Quản lý cho thuê xe ô tô tự lái",
-  description: "Hệ thống quản lý cho thuê xe ô tô tự lái Lavie Car Rental",
+  title: "Lavie Car Rental - Thông báo tạm ngưng hoạt động",
+  description: "Hệ thống website và quản trị Lavie Car Rental đang trong trạng thái tạm ngưng hoạt động.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -32,9 +37,14 @@ export default function RootLayout({
   return (
     <html lang="vi" className={plusJakarta.variable}>
       <body className={`${plusJakarta.className} font-sans antialiased bg-background min-h-screen`}>
-        <AuthProvider>{children}</AuthProvider>
+        {IS_MAINTENANCE ? (
+          <MaintenanceScreen />
+        ) : (
+          <AuthProvider>{children}</AuthProvider>
+        )}
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
   )
 }
+
